@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.codex/
+.idea/
+*.iml
+*.log
+.env.local
+.env.*.local
