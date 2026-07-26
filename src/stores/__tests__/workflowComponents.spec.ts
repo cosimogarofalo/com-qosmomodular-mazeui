@@ -135,6 +135,27 @@ describe('critical workflow components', () => {
     expect(buttons[1]?.classes()).toContain('button-ghost')
   })
 
+  it('loops either A/B source through an explicit pressed-state toggle', async () => {
+    const wrapper = mount(AudioComparison, {
+      props: {
+        originalUrl: '/api/audio/inputs/input/content',
+        renderedUrl: '/api/jobs/job/outputs/0/content',
+      },
+    })
+    const loopButton = wrapper.find('.loop-playback-button')
+    const players = wrapper.findAll('audio')
+
+    expect(loopButton.attributes('aria-pressed')).toBe('false')
+    expect(loopButton.classes()).toContain('button-ghost')
+    expect(players.every((player) => player.element.loop === false)).toBe(true)
+
+    await loopButton.trigger('click')
+
+    expect(loopButton.attributes('aria-pressed')).toBe('true')
+    expect(loopButton.classes()).toContain('button-primary')
+    expect(players.every((player) => player.element.loop === true)).toBe(true)
+  })
+
   it('exposes auto validation as an explicit pressed-state toggle', async () => {
     const wrapper = mount(AppHeader, {
       props: {

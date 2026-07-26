@@ -9,6 +9,7 @@ const props = defineProps<{
 const original = ref<HTMLAudioElement | null>(null)
 const rendered = ref<HTMLAudioElement | null>(null)
 const activeSource = ref<'original' | 'rendered' | null>(null)
+const loopPlayback = ref(false)
 
 function selectSource(target: 'original' | 'rendered') {
   activeSource.value = target
@@ -64,6 +65,16 @@ function clearSource(target: 'original' | 'rendered') {
       <button class="button button-ghost" type="button" @click="pauseBoth">
         Pause both
       </button>
+      <button
+        class="button loop-playback-button"
+        :class="loopPlayback ? 'button-primary' : 'button-ghost'"
+        type="button"
+        :aria-pressed="loopPlayback"
+        title="Repeat the active audio file continuously"
+        @click="loopPlayback = !loopPlayback"
+      >
+        Loop
+      </button>
       <span>Switching A/B keeps the active playhead when possible.</span>
     </div>
     <div class="audio-players">
@@ -72,6 +83,7 @@ function clearSource(target: 'original' | 'rendered') {
         <audio
           ref="original"
           controls
+          :loop="loopPlayback"
           preload="metadata"
           :src="originalUrl"
           @play="selectSource('original')"
@@ -83,6 +95,7 @@ function clearSource(target: 'original' | 'rendered') {
         <audio
           ref="rendered"
           controls
+          :loop="loopPlayback"
           preload="metadata"
           :src="renderedUrl"
           @play="selectSource('rendered')"
