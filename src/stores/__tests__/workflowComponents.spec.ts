@@ -138,7 +138,8 @@ describe('critical workflow components', () => {
     const wrapper = mount(AppHeader, {
       props: {
         mazeStatus: 'connected',
-        mazeVersion: '0.1.0',
+        mazeVersion: '0.8.0',
+        uiVersion: '0.8.0',
         chainName: 'Voice chain',
         dirty: true,
         autoValidate: false,
@@ -146,6 +147,7 @@ describe('critical workflow components', () => {
     })
     const button = wrapper.find('.auto-validate-button')
 
+    expect(wrapper.find('.brand-block span').text()).toContain('UI 0.8.0')
     expect(button.attributes('aria-pressed')).toBe('false')
     expect(button.classes()).not.toContain('active')
     await button.trigger('click')
@@ -162,7 +164,7 @@ describe('critical workflow components', () => {
     vi.spyOn(mazeApi, 'health').mockResolvedValue({
       status: 'ok',
       service: 'maze-rest',
-      version: '0.1.0',
+      version: '0.8.0',
     })
     vi.spyOn(mazeApi, 'processors').mockResolvedValue({
       processors: [monoProcessor],

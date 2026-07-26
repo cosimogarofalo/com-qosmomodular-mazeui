@@ -55,7 +55,7 @@ The development UI listens on `http://127.0.0.1:5173` and proxies `/api` to Maze
 
 ## Local end-to-end trial
 
-Build and start Maze REST from the Maze `feature/rest-ui-integration` worktree:
+Build and start Maze REST from its `main` worktree:
 
 ```powershell
 cd C:\Users\compu\maze-rest-ui-work
@@ -98,3 +98,7 @@ belongs in this browser application.
 MazeAI is intentionally not called by this browser build. A future integration requires its own
 server-side asynchronous proposal API so provider credentials, local audio resolution, and model
 execution never move into the browser; Maze will remain the final validation and render authority.
+
+## Version
+
+0.8.0

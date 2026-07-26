@@ -5,6 +5,7 @@ import type { MazeConnectionStatus } from '@/stores/maze'
 defineProps<{
   mazeStatus: MazeConnectionStatus
   mazeVersion?: string
+  uiVersion: string
   chainName: string
   dirty: boolean
   autoValidate: boolean
@@ -26,7 +27,7 @@ defineEmits<{
       </div>
       <div>
         <strong>MAZE</strong>
-        <span>Chain Editor</span>
+        <span>Chain Editor · UI {{ uiVersion }}</span>
       </div>
     </div>
 

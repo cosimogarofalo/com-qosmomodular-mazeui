@@ -17,6 +17,7 @@ import type { OutputFormat, ParameterValue, Processor } from '@/types/maze'
 const maze = useMazeStore()
 const chain = useChainStore()
 const workflow = useWorkflowStore()
+const uiVersion = __MAZE_UI_VERSION__
 const autoValidate = ref(false)
 let autoValidationTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -164,6 +165,7 @@ function newChain() {
     <AppHeader
       :maze-status="maze.status"
       :maze-version="maze.health?.version"
+      :ui-version="uiVersion"
       :chain-name="chain.draft.name"
       :dirty="chain.dirty"
       :auto-validate="autoValidate"
