@@ -31,6 +31,40 @@ function isLfoWave(param: ProcessorParam): boolean {
   return param.name.toLowerCase() === 'lfowave'
 }
 
+function controllerValue(
+  effect: ChainEffectDraft,
+  controller: string,
+  controllerOverride?: { name: string; value: ParameterValue },
+): ParameterValue {
+  return controllerOverride?.name === controller
+    ? controllerOverride.value
+    : effect.params[controller]?.value
+}
+
+function allowedOptions(
+  effect: ChainEffectDraft,
+  param: ProcessorParam,
+  controllerOverride?: { name: string; value: ParameterValue },
+): string[] {
+  if (!param.optionsBy) {
+    return param.options
+  }
+  const selected = controllerValue(effect, param.optionsBy, controllerOverride)
+  return param.optionsFor?.[String(selected)] ?? param.options
+}
+
+function isVisible(effect: ChainEffectDraft, param: ProcessorParam): boolean {
+  if (!param.visibleBy) {
+    return true
+  }
+  const selected = controllerValue(effect, param.visibleBy)
+  return param.visibleFor?.includes(String(selected)) ?? true
+}
+
+function visibleParams(effect: ChainEffectDraft, processor: Processor): ProcessorParam[] {
+  return processor.params.filter((param) => isVisible(effect, param))
+}
+
 function value(effect: ChainEffectDraft, param: ProcessorParam): ParameterValue {
   return effect.params[param.name]?.value ?? null
 }
@@ -128,20 +162,35 @@ function normalizeDependents(
   controllerValue: ParameterValue,
 ) {
   for (const dependent of props.processor?.params ?? []) {
-    if (!isNumeric(dependent) || rangeController(dependent) !== controllerName) {
-      continue
+    if (isNumeric(dependent) && rangeController(dependent) === controllerName) {
+      const currentValue = effect.params[dependent.name]?.value
+      const currentNumber = Number(currentValue)
+      if (!Number.isFinite(currentNumber)) {
+        continue
+      }
+      const normalized = numericValue(effect, dependent, String(currentNumber), {
+        name: controllerName,
+        value: controllerValue,
+      })
+      if (normalized !== currentNumber) {
+        emit('update', dependent.name, normalized)
+      }
     }
-    const currentValue = effect.params[dependent.name]?.value
-    const currentNumber = Number(currentValue)
-    if (!Number.isFinite(currentNumber)) {
-      continue
-    }
-    const normalized = numericValue(effect, dependent, String(currentNumber), {
-      name: controllerName,
-      value: controllerValue,
-    })
-    if (normalized !== currentNumber) {
-      emit('update', dependent.name, normalized)
+
+    if (dependent.optionsBy === controllerName) {
+      const options = allowedOptions(effect, dependent, {
+        name: controllerName,
+        value: controllerValue,
+      })
+      const currentValue = String(effect.params[dependent.name]?.value)
+      if (!options.includes(currentValue) && options.length > 0) {
+        const defaultValue = String(dependent.defaultValue)
+        emit(
+          'update',
+          dependent.name,
+          options.includes(defaultValue) ? defaultValue : options[0],
+        )
+      }
     }
   }
 }
@@ -190,7 +239,11 @@ function updateBoolean(param: ProcessorParam, event: Event) {
       </div>
 
       <div class="parameter-list">
-        <label v-for="param in processor.params" :key="param.name" class="parameter-control">
+        <label
+          v-for="param in visibleParams(effect, processor)"
+          :key="param.name"
+          class="parameter-control"
+        >
           <LfoWavePreview
             v-if="isLfoWave(param)"
             :wave="String(value(effect, param) || 'UNIPOLAR_SINE')"
@@ -220,7 +273,12 @@ function updateBoolean(param: ProcessorParam, event: Event) {
             :value="value(effect, param)"
             @change="updateText(effect, param, $event)"
           >
-            <option v-for="option in param.options" :key="option" :value="option">
+            <option
+              v-for="option in param.options"
+              :key="option"
+              :value="option"
+              :disabled="!allowedOptions(effect, param).includes(option)"
+            >
               {{ option }}
             </option>
           </select>

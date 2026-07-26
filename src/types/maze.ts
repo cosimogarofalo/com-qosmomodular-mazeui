@@ -38,6 +38,10 @@ export interface ProcessorParam {
   defaultValue: ParameterValue
   unit: string | null
   options: string[]
+  optionsBy?: string | null
+  optionsFor?: Record<string, string[]>
+  visibleBy?: string | null
+  visibleFor?: string[]
   description: string | null
   regional: boolean
   sourceDerived: boolean

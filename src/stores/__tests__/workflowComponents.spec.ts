@@ -326,6 +326,188 @@ describe('critical workflow components', () => {
     expect(updates[updates.length - 1]).toEqual(['inputLevel', 0])
   })
 
+  it('guides filter-dependent controls, poles, and modulation destinations', async () => {
+    const filteredDelay: Processor = {
+      ...processor('PR-TIB-FI-DE-01', ['MONO', 'STEREO']),
+      type: 'DELAY',
+      params: [
+        {
+          name: 'filterType',
+          type: 'enum',
+          min: null,
+          max: null,
+          defaultValue: 'LP',
+          unit: null,
+          options: ['LP', 'HP', 'BP', 'BS', 'LS', 'HS', 'PN'],
+          description: 'Filter type',
+          regional: false,
+          sourceDerived: false,
+        },
+        {
+          name: 'filterPoles',
+          type: 'enum',
+          min: null,
+          max: null,
+          defaultValue: '1P',
+          unit: null,
+          options: ['1P', '2P', '3P', '4P', '6P', '8P'],
+          optionsBy: 'filterType',
+          optionsFor: {
+            LP: ['1P', '2P', '3P', '4P'],
+            BP: ['2P', '4P', '6P', '8P'],
+            PN: ['2P'],
+          },
+          description: 'Filter poles',
+          regional: false,
+          sourceDerived: false,
+        },
+        {
+          name: 'filterFrequency',
+          type: 'number',
+          min: 20,
+          max: 20_000,
+          defaultValue: 2_000,
+          unit: 'Hz',
+          options: [],
+          description: 'Filter frequency',
+          regional: false,
+          sourceDerived: false,
+        },
+        {
+          name: 'filterBandwidth',
+          type: 'number',
+          min: 20,
+          max: 10_000,
+          defaultValue: 500,
+          unit: 'Hz',
+          options: [],
+          visibleBy: 'filterType',
+          visibleFor: ['BP', 'BS', 'PN'],
+          description: 'Filter bandwidth',
+          regional: false,
+          sourceDerived: false,
+        },
+        {
+          name: 'filterGain',
+          type: 'number',
+          min: -24,
+          max: 24,
+          defaultValue: 6,
+          unit: 'dB',
+          options: [],
+          visibleBy: 'filterType',
+          visibleFor: ['LS', 'HS', 'PN'],
+          description: 'Filter gain',
+          regional: false,
+          sourceDerived: false,
+        },
+        {
+          name: 'modDestination',
+          type: 'enum',
+          min: null,
+          max: null,
+          defaultValue: 'FILTER_FREQUENCY',
+          unit: null,
+          options: [
+            'NONE',
+            'DELAY',
+            'GAIN',
+            'FEEDBACK',
+            'FILTER_GAIN',
+            'FILTER_FREQUENCY',
+            'FILTER_BANDWIDTH',
+          ],
+          optionsBy: 'filterType',
+          optionsFor: {
+            LP: ['NONE', 'DELAY', 'GAIN', 'FEEDBACK', 'FILTER_FREQUENCY'],
+            BP: [
+              'NONE',
+              'DELAY',
+              'GAIN',
+              'FEEDBACK',
+              'FILTER_FREQUENCY',
+              'FILTER_BANDWIDTH',
+            ],
+            PN: [
+              'NONE',
+              'DELAY',
+              'GAIN',
+              'FEEDBACK',
+              'FILTER_GAIN',
+              'FILTER_FREQUENCY',
+              'FILTER_BANDWIDTH',
+            ],
+          },
+          description: 'Modulation destination',
+          regional: false,
+          sourceDerived: false,
+        },
+      ],
+    }
+    const effect = (filterType: string, filterPoles: string): ChainEffectDraft => ({
+      key: 'filtered-delay-1',
+      processorId: filteredDelay.id,
+      enabled: true,
+      params: {
+        filterType: { value: filterType, regions: [] },
+        filterPoles: { value: filterPoles, regions: [] },
+        filterFrequency: { value: 2_000, regions: [] },
+        filterBandwidth: { value: 500, regions: [] },
+        filterGain: { value: 6, regions: [] },
+        modDestination: { value: 'FILTER_FREQUENCY', regions: [] },
+      },
+    })
+    const wrapper = mount(ProcessorInspector, {
+      props: { processor: filteredDelay, effect: effect('LP', '1P') },
+    })
+    const control = (name: string) =>
+      wrapper
+        .findAll('.parameter-control')
+        .find((candidate) => candidate.find('.parameter-label').text().startsWith(name))
+    const enabledOptions = (name: string) =>
+      control(name)
+        ?.findAll('option')
+        .filter((option) => option.attributes('disabled') === undefined)
+        .map((option) => option.text())
+
+    expect(control('filterBandwidth')).toBeUndefined()
+    expect(control('filterGain')).toBeUndefined()
+    expect(enabledOptions('filterPoles')).toEqual(['1P', '2P', '3P', '4P'])
+    expect(enabledOptions('modDestination')).toEqual([
+      'NONE',
+      'DELAY',
+      'GAIN',
+      'FEEDBACK',
+      'FILTER_FREQUENCY',
+    ])
+
+    await control('filterType')?.find('select').setValue('BP')
+    expect(wrapper.emitted('update')?.slice(-2)).toEqual([
+      ['filterType', 'BP'],
+      ['filterPoles', '2P'],
+    ])
+
+    await wrapper.setProps({ effect: effect('BP', '2P') })
+    expect(control('filterBandwidth')).toBeDefined()
+    expect(control('filterGain')).toBeUndefined()
+    expect(enabledOptions('filterPoles')).toEqual(['2P', '4P', '6P', '8P'])
+    expect(enabledOptions('modDestination')).toContain('FILTER_BANDWIDTH')
+
+    await wrapper.setProps({ effect: effect('PN', '2P') })
+    expect(control('filterBandwidth')).toBeDefined()
+    expect(control('filterGain')).toBeDefined()
+    expect(enabledOptions('filterPoles')).toEqual(['2P'])
+    expect(enabledOptions('modDestination')).toEqual([
+      'NONE',
+      'DELAY',
+      'GAIN',
+      'FEEDBACK',
+      'FILTER_GAIN',
+      'FILTER_FREQUENCY',
+      'FILTER_BANDWIDTH',
+    ])
+  })
+
   it('shows a static phosphor waveform for lfoWave on any processor', async () => {
     const modulator: Processor = {
       ...processor('arbitrary-modulator', ['MONO', 'STEREO']),
