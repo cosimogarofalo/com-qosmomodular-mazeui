@@ -799,6 +799,214 @@ describe('critical workflow components', () => {
     )
   })
 
+  it('shows the Ten Band EQ bands and reactive combined response', async () => {
+    const frequencies = ['31', '62', '125', '250', '500', '1k', '2k', '4k', '8k', '16k']
+    const equalizer: Processor = {
+      ...processor('ten-band-eq', ['MONO', 'STEREO']),
+      type: 'EQUALIZE',
+      subType: 'TEN_BANDS',
+      params: frequencies.map((frequency) => numericParam(`band${frequency}`, 0)),
+    }
+    const effect = (low: number, presence: number): ChainEffectDraft => ({
+      key: 'ten-band-eq-1',
+      processorId: equalizer.id,
+      enabled: true,
+      params: Object.fromEntries(
+        frequencies.map((frequency) => [
+          `band${frequency}`,
+          {
+            value:
+              frequency === '31' ? low : frequency === '4k' ? presence : 0,
+            regions: [],
+          },
+        ]),
+      ),
+    })
+    const wrapper = mount(ProcessorVisualization, {
+      props: {
+        processor: equalizer,
+        effect: effect(0, 0),
+        sampleRate: 48_000,
+      },
+    })
+    const initialPath = wrapper.find('.eq-total-trace').attributes('d')
+
+    expect(wrapper.find('.eq-scope').attributes('data-band-count')).toBe('10')
+    expect(wrapper.findAll('.eq-band')).toHaveLength(10)
+    expect(wrapper.text()).toContain('48000 Hz')
+
+    await wrapper.setProps({ effect: effect(8, -6) })
+    expect(wrapper.find('.eq-total-trace').attributes('d')).not.toBe(
+      initialPath,
+    )
+  })
+
+  it('shows Parametric EQ filter nodes and updates frequency, gain, Q, and slope', async () => {
+    const equalizer: Processor = {
+      ...processor('parametric-eq', ['MONO', 'STEREO']),
+      type: 'EQUALIZE',
+      subType: 'PARAMETRIC',
+      params: [
+        numericParam('inputGain', 0),
+        numericParam('highPassFrequency', 30, 'Hz'),
+        numericParam('bell1Frequency', 800, 'Hz'),
+        numericParam('bell1Gain', 6),
+        numericParam('bell1Q', 1, 'Q'),
+        numericParam('outputGain', 0),
+        numericParam('dryWet', 100, '%'),
+      ],
+    }
+    const effect = (
+      frequency: number,
+      gain: number,
+      q: number,
+      slope: string,
+    ): ChainEffectDraft => ({
+      key: 'parametric-eq-1',
+      processorId: equalizer.id,
+      enabled: true,
+      params: {
+        inputGain: { value: 0, regions: [] },
+        highPassEnabled: { value: true, regions: [] },
+        highPassFrequency: { value: 30, regions: [] },
+        highPassSlope: { value: slope, regions: [] },
+        lowShelfEnabled: { value: false, regions: [] },
+        bell1Enabled: { value: true, regions: [] },
+        bell1Frequency: { value: frequency, regions: [] },
+        bell1Gain: { value: gain, regions: [] },
+        bell1Q: { value: q, regions: [] },
+        highShelfEnabled: { value: false, regions: [] },
+        lowPassEnabled: { value: false, regions: [] },
+        outputGain: { value: 0, regions: [] },
+        dryWet: { value: 100, regions: [] },
+      },
+    })
+    const wrapper = mount(ProcessorVisualization, {
+      props: {
+        processor: equalizer,
+        effect: effect(800, 6, 1, '2P'),
+        sampleRate: 96_000,
+      },
+    })
+    const initialPath = wrapper.find('.eq-total-trace').attributes('d')
+
+    expect(wrapper.find('.eq-scope').attributes('data-band-count')).toBe('8')
+    expect(wrapper.findAll('.eq-band')).toHaveLength(8)
+    expect(wrapper.find('[data-label="HP"]').attributes('data-enabled')).toBe(
+      'true',
+    )
+    expect(wrapper.find('[data-label="B1"]').attributes('data-enabled')).toBe(
+      'true',
+    )
+
+    await wrapper.setProps({
+      effect: effect(3_200, -9, 8, '4P'),
+    })
+    expect(wrapper.find('.eq-total-trace').attributes('d')).not.toBe(
+      initialPath,
+    )
+  })
+
+  it('labels Dynamic EQ curves as maximum detector-controlled range', async () => {
+    const equalizer: Processor = {
+      ...processor('dynamic-eq', ['MONO', 'STEREO']),
+      type: 'EQUALIZE',
+      subType: 'DYNAMIC',
+      params: [
+        numericParam('band1Frequency', 1_000, 'Hz'),
+        numericParam('band1Range', -6),
+        numericParam('band1Q', 2, 'Q'),
+      ],
+    }
+    const effect = (range: number): ChainEffectDraft => ({
+      key: 'dynamic-eq-1',
+      processorId: equalizer.id,
+      enabled: true,
+      params: {
+        band1Enabled: { value: true, regions: [] },
+        band1Frequency: { value: 1_000, regions: [] },
+        band1Range: { value: range, regions: [] },
+        band1Q: { value: 2, regions: [] },
+        dryWet: { value: 100, regions: [] },
+        inputGain: { value: 0, regions: [] },
+        outputGain: { value: 0, regions: [] },
+      },
+    })
+    const wrapper = mount(ProcessorVisualization, {
+      props: {
+        processor: equalizer,
+        effect: effect(-6),
+      },
+    })
+    const initialPath = wrapper.find('.eq-total-trace').attributes('d')
+    const scope = wrapper.find('.eq-scope')
+
+    expect(scope.attributes('data-dynamic')).toBe('true')
+    expect(scope.text()).toContain('maximum Range')
+    expect(wrapper.findAll('.eq-band')).toHaveLength(6)
+
+    await wrapper.setProps({ effect: effect(10) })
+    expect(wrapper.find('.eq-total-trace').attributes('d')).not.toBe(
+      initialPath,
+    )
+  })
+
+  it('shows reactive frequency responses for both Two and Three Knob Tone EQs', async () => {
+    const tone = (
+      subType: 'T2_KNOB' | 'T3_KNOB',
+      bass: number,
+      middle: number,
+      treble: number,
+    ) => {
+      const processorDefinition: Processor = {
+        ...processor(`tone-${subType}`, ['MONO', 'STEREO']),
+        type: 'TONE',
+        subType,
+        params: [
+          numericParam('bass', 0),
+          ...(subType === 'T3_KNOB' ? [numericParam('middle', 0)] : []),
+          numericParam('treble', 0),
+        ],
+      }
+      const effect: ChainEffectDraft = {
+        key: `tone-${subType}-1`,
+        processorId: processorDefinition.id,
+        enabled: true,
+        params: {
+          bass: { value: bass, regions: [] },
+          ...(subType === 'T3_KNOB'
+            ? { middle: { value: middle, regions: [] } }
+            : {}),
+          treble: { value: treble, regions: [] },
+        },
+      }
+      return { processorDefinition, effect }
+    }
+    const twoKnob = tone('T2_KNOB', 6, 0, -4)
+    const wrapper = mount(ProcessorVisualization, {
+      props: {
+        processor: twoKnob.processorDefinition,
+        effect: twoKnob.effect,
+      },
+    })
+
+    expect(wrapper.find('.eq-scope').attributes('data-band-count')).toBe('2')
+    expect(wrapper.text()).toContain('BASS')
+    expect(wrapper.text()).toContain('TREBLE')
+
+    const twoKnobPath = wrapper.find('.eq-total-trace').attributes('d')
+    const threeKnob = tone('T3_KNOB', -5, 9, 3)
+    await wrapper.setProps({
+      processor: threeKnob.processorDefinition,
+      effect: threeKnob.effect,
+    })
+    expect(wrapper.find('.eq-scope').attributes('data-band-count')).toBe('3')
+    expect(wrapper.text()).toContain('MID')
+    expect(wrapper.find('.eq-total-trace').attributes('d')).not.toBe(
+      twoKnobPath,
+    )
+  })
+
   it('shows the selected saturation transfer function as a phosphor trace', async () => {
     const saturator: Processor = {
       ...processor('simple-saturator', ['MONO', 'STEREO']),

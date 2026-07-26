@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import CompressorTransferPreview from '@/components/CompressorTransferPreview.vue'
+import EqFrequencyResponse, {
+  type EqBand,
+} from '@/components/EqFrequencyResponse.vue'
 import LimiterTransferPreview from '@/components/LimiterTransferPreview.vue'
 import type { ChainEffectDraft, Processor } from '@/types/maze'
 
 const props = defineProps<{
   effect: ChainEffectDraft
   processor: Processor
+  sampleRate?: number
 }>()
 
 function processorNumber(name: string, fallback: number): number {
@@ -81,6 +85,139 @@ function limiterSettings() {
     transientMode: processorString('transientMode', 'CLEAN'),
   }
 }
+
+function processorSlope(name: string, fallback = 2): number {
+  const slope = Number.parseInt(processorString(name, `${fallback}P`), 10)
+  return [1, 2, 4].includes(slope) ? slope : fallback
+}
+
+function tenBandSettings(): EqBand[] {
+  const bands = [
+    ['31', 31, 'LOW_SHELF'],
+    ['62', 62, 'BELL'],
+    ['125', 125, 'BELL'],
+    ['250', 250, 'BELL'],
+    ['500', 500, 'BELL'],
+    ['1k', 1_000, 'BELL'],
+    ['2k', 2_000, 'BELL'],
+    ['4k', 4_000, 'BELL'],
+    ['8k', 8_000, 'BELL'],
+    ['16k', 16_000, 'HIGH_SHELF'],
+  ] as const
+  return bands.map(([label, frequency, type]) => ({
+    label,
+    type,
+    enabled: true,
+    frequency,
+    gain: processorNumber(`band${label}`, 0),
+    q: 1,
+  }))
+}
+
+function parametricSettings(): EqBand[] {
+  const bands: EqBand[] = [
+    {
+      label: 'HP',
+      type: 'HIGH_PASS',
+      enabled: processorBoolean('highPassEnabled', false),
+      frequency: processorNumber('highPassFrequency', 20),
+      gain: 0,
+      slope: processorSlope('highPassSlope'),
+    },
+    {
+      label: 'LS',
+      type: 'LOW_SHELF',
+      enabled: processorBoolean('lowShelfEnabled', false),
+      frequency: processorNumber('lowShelfFrequency', 120),
+      gain: processorNumber('lowShelfGain', 0),
+    },
+  ]
+  for (let index = 1; index <= 4; index += 1) {
+    bands.push({
+      label: `B${index}`,
+      type: 'BELL',
+      enabled: processorBoolean(`bell${index}Enabled`, false),
+      frequency: processorNumber(
+        `bell${index}Frequency`,
+        [160, 550, 2_200, 6_500][index - 1] || 1_000,
+      ),
+      gain: processorNumber(`bell${index}Gain`, 0),
+      q: processorNumber(`bell${index}Q`, 1),
+    })
+  }
+  bands.push(
+    {
+      label: 'HS',
+      type: 'HIGH_SHELF',
+      enabled: processorBoolean('highShelfEnabled', false),
+      frequency: processorNumber('highShelfFrequency', 10_000),
+      gain: processorNumber('highShelfGain', 0),
+    },
+    {
+      label: 'LP',
+      type: 'LOW_PASS',
+      enabled: processorBoolean('lowPassEnabled', false),
+      frequency: processorNumber('lowPassFrequency', 20_000),
+      gain: 0,
+      slope: processorSlope('lowPassSlope'),
+    },
+  )
+  return bands
+}
+
+function dynamicSettings(): EqBand[] {
+  return Array.from({ length: 6 }, (_, offset) => {
+    const index = offset + 1
+    return {
+      label: `B${index}`,
+      type: 'BELL' as const,
+      enabled: processorBoolean(`band${index}Enabled`, false),
+      frequency: processorNumber(
+        `band${index}Frequency`,
+        [80, 180, 450, 1_200, 3_500, 8_500][offset] || 1_000,
+      ),
+      gain: processorNumber(`band${index}Range`, 0),
+      q: processorNumber(`band${index}Q`, 1),
+    }
+  })
+}
+
+function toneSettings(): EqBand[] {
+  const bands: EqBand[] = [
+    {
+      label: 'BASS',
+      type: 'LOW_SHELF',
+      enabled: true,
+      frequency: 302.04,
+      gain: processorNumber('bass', 0),
+    },
+  ]
+  if (props.processor.subType === 'T3_KNOB') {
+    bands.push({
+      label: 'MID',
+      type: 'BELL',
+      enabled: true,
+      frequency: 1_208.16,
+      gain: processorNumber('middle', 0),
+      q: 1_208.16 / 4_832.64,
+    })
+  }
+  bands.push({
+    label: 'TREBLE',
+    type: 'HIGH_SHELF',
+    enabled: true,
+    frequency: 4_063.75,
+    gain: processorNumber('treble', 0),
+  })
+  return bands
+}
+
+function eqBands(): EqBand[] {
+  if (props.processor.type === 'TONE') return toneSettings()
+  if (props.processor.subType === 'TEN_BANDS') return tenBandSettings()
+  if (props.processor.subType === 'DYNAMIC') return dynamicSettings()
+  return parametricSettings()
+}
 </script>
 
 <template>
@@ -98,6 +235,15 @@ function limiterSettings() {
     <LimiterTransferPreview
       v-else-if="processor.type === 'LIMIT'"
       :settings="limiterSettings()"
+    />
+    <EqFrequencyResponse
+      v-else-if="processor.type === 'EQUALIZE' || processor.type === 'TONE'"
+      :bands="eqBands()"
+      :sample-rate="sampleRate"
+      :input-gain="processor.type === 'TONE' || processor.subType === 'TEN_BANDS' ? 0 : processorNumber('inputGain', 0)"
+      :output-gain="processor.type === 'TONE' || processor.subType === 'TEN_BANDS' ? 0 : processorNumber('outputGain', 0)"
+      :dry-wet="processor.type === 'TONE' || processor.subType === 'TEN_BANDS' ? 100 : processorNumber('dryWet', 100)"
+      :dynamic="processor.subType === 'DYNAMIC'"
     />
     <div v-else class="visualization-unavailable">
       No dedicated visualization is available for this processor yet.

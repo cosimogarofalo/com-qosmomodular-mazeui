@@ -27,6 +27,7 @@ const props = defineProps<{
   originalUrl: string
   selectedEffect?: ChainEffectDraft
   selectedProcessor?: Processor
+  sampleRate?: number
 }>()
 
 defineEmits<{
@@ -155,6 +156,7 @@ function bytes(value: number | null): string {
         <ProcessorVisualization
           :effect="selectedEffect"
           :processor="selectedProcessor"
+          :sample-rate="sampleRate"
         />
       </template>
     </div>

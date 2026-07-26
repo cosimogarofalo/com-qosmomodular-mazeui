@@ -349,6 +349,7 @@ function rememberDockRatio() {
           :original-url="workflow.originalUrl"
           :selected-effect="chain.selectedEffect"
           :selected-processor="selectedProcessor"
+          :sample-rate="selectedInput?.sampleRate"
           @validate="validateDraft"
           @delete-job="workflow.deleteCurrentJob"
           @clear-job="workflow.clearJob"
