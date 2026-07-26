@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import mazeLogo from '@/maze-logo.svg'
 import type { MazeConnectionStatus } from '@/stores/maze'
 
 defineProps<{
@@ -6,19 +7,23 @@ defineProps<{
   mazeVersion?: string
   chainName: string
   dirty: boolean
+  autoValidate: boolean
 }>()
 
 defineEmits<{
   reconnect: []
   newChain: []
   validate: []
+  toggleAutoValidate: []
 }>()
 </script>
 
 <template>
   <header class="app-header">
     <div class="brand-block">
-      <div class="brand-mark" aria-hidden="true">M</div>
+      <div class="brand-mark">
+        <img :src="mazeLogo" alt="" />
+      </div>
       <div>
         <strong>MAZE</strong>
         <span>Chain Editor</span>
@@ -38,6 +43,16 @@ defineEmits<{
       </button>
       <button class="button button-ghost" type="button" @click="$emit('newChain')">
         New
+      </button>
+      <button
+        class="button auto-validate-button"
+        :class="{ active: autoValidate }"
+        type="button"
+        :aria-pressed="autoValidate"
+        title="Validate automatically after the draft stops changing"
+        @click="$emit('toggleAutoValidate')"
+      >
+        Auto validate
       </button>
       <button class="button button-primary" type="button" @click="$emit('validate')">
         Validate

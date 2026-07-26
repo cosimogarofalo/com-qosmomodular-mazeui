@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
-import type { Processor } from '@/types/maze'
+import ProcessorGlyph from '@/components/ProcessorGlyph.vue'
+import type { AudioTopology, Processor } from '@/types/maze'
 
 const props = defineProps<{
   processors: Processor[]
   loading: boolean
   error?: string | null
+  currentTopology: AudioTopology | null
+  inputSelected: boolean
 }>()
 
 defineEmits<{
@@ -15,6 +18,17 @@ defineEmits<{
 }>()
 
 const query = ref('')
+
+function availabilityReason(processor: Processor): string | null {
+  if (!props.currentTopology) return 'Select an input first'
+  if (!processor.inputTypes.includes(props.currentTopology)) {
+    return `Requires ${processor.inputTypes.join(' or ')} input`
+  }
+  if (processor.sourceBinding === 'REQUIRED' && !props.inputSelected) {
+    return 'Requires a managed source binding'
+  }
+  return null
+}
 
 const categories = computed(() => {
   const normalizedQuery = query.value.trim().toLowerCase()
@@ -69,14 +83,20 @@ const categories = computed(() => {
           v-for="processor in items"
           :key="processor.id"
           class="processor-row"
+          :class="{ unavailable: availabilityReason(processor) }"
           type="button"
-          :title="processor.description"
+          :disabled="Boolean(availabilityReason(processor))"
+          :title="availabilityReason(processor) || processor.description"
           @click="$emit('add', processor)"
         >
-          <span class="processor-icon">∿</span>
+          <span class="processor-icon">
+            <ProcessorGlyph :type="processor.type" />
+          </span>
           <span class="processor-copy">
             <strong>{{ processor.name }}</strong>
-            <small>{{ processor.id }}</small>
+            <small>
+              {{ availabilityReason(processor) || processor.inputTypes.join(' / ') }}
+            </small>
           </span>
           <span class="add-glyph">+</span>
         </button>

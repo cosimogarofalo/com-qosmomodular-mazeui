@@ -6,20 +6,28 @@ MazeUI is a Vue 3 single-page application. Maze remains the authority for the pr
 chain validation, DSP rendering, jobs, logs, and outputs. MazeAI is intentionally outside the first
 implementation phase.
 
-## Current scaffold
+## Current workflow
 
 - Vue 3, TypeScript, Vite, Pinia, and Vue Router
-- typed client for the existing Maze REST health, processor, validation, and render contracts
+- typed client for Maze REST health, catalog, managed audio, validation, render, jobs, logs, and media
 - processor catalog loaded from `GET /api/processors`
-- strictly linear chain draft and Maze YAML serialization
-- metadata-driven processor Inspector
-- chain overview, YAML view, and Maze validation panel
-- initial dark studio shell based on the approved MazeUI direction
+- managed WAV/AIFF selection and browser upload without server path fields
+- strictly linear chain draft with bound inline YAML serialization
+- mono/stereo topology checks driven by catalog `inputTypes` and `outputType`
+- source-bound and regional parameter preservation, with source fingerprints populated from the
+  selected managed input
+- metadata-driven processor Inspector with source-derived fields locked read-only
+- characteristic vector glyphs for every processor type in the distributed Maze catalog
+- authoritative bound validation before render, either manual or through the debounced
+  `Auto validate` toggle
+- asynchronous job status/log polling, cancellation/deletion, ordered outputs, playback, A/B, and
+  explicit downloads
+- dark studio shell based on the approved MazeUI direction
 - Vue Flow dependency reserved for the constrained visual canvas integration
 
-Chain persistence, audio browsing, job monitoring, playback, and output downloads are the next
-implementation slices. The Render button stays disabled until a draft can be persisted safely or
-Maze accepts inline render YAML.
+Maze remains authoritative for validation and rendering. The Render button is enabled only when the
+current managed input/output bindings, topology, source provenance, and latest server validation are
+acceptable. Jobs are intentionally session-local; the UI does not imply persistent server history.
 
 ## Requirements
 
@@ -45,6 +53,27 @@ npm run dev
 
 The development UI listens on `http://127.0.0.1:5173` and proxies `/api` to Maze REST.
 
+## Local end-to-end trial
+
+Build and start Maze REST from the Maze `feature/rest-ui-integration` worktree:
+
+```powershell
+cd C:\Users\compu\maze-rest-ui-work
+mvn clean package
+java -jar maze-rest\target\maze-rest.jar --port 8081
+```
+
+In a second terminal, start MazeUI from its canonical project directory:
+
+```powershell
+cd C:\Work\Projects\IDEA\com-qosmomodular-mazeui
+npm.cmd run dev
+```
+
+Open `http://127.0.0.1:5173`, select or upload a WAV/AIFF, add a compatible processor, choose a safe
+output base name, validate the bound draft manually or enable `Auto validate`, and render. Completed
+outputs appear in order with original/rendered playback, A/B controls, and download actions.
+
 ## Commands
 
 ```powershell
@@ -65,3 +94,7 @@ VITE_MAZE_API_URL=/api
 
 Keep `VITE_MAZE_API_URL=/api` for same-origin production packaging. No secret or provider credential
 belongs in this browser application.
+
+MazeAI is intentionally not called by this browser build. A future integration requires its own
+server-side asynchronous proposal API so provider credentials, local audio resolution, and model
+execution never move into the browser; Maze will remain the final validation and render authority.

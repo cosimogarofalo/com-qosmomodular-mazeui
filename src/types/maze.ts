@@ -1,9 +1,30 @@
 export type ParameterValue = string | number | boolean | null
+export type AudioTopology = 'MONO' | 'STEREO'
+export type OutputFormat = 'WAV' | 'AIFF'
+export type JobState = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
 
 export interface HealthResponse {
   status: string
   service: string
   version: string
+}
+
+export interface ParamRegion {
+  startFrame: number
+  endFrame: number
+  value: string
+  confidence?: number | null
+}
+
+export interface ParameterSourceProvenance {
+  inputId: string
+  sha256: string
+}
+
+export interface ParameterDraft {
+  value: ParameterValue
+  regions: ParamRegion[]
+  source?: ParameterSourceProvenance
 }
 
 export interface ProcessorParam {
@@ -15,6 +36,8 @@ export interface ProcessorParam {
   unit: string | null
   options: string[]
   description: string | null
+  regional: boolean
+  sourceDerived: boolean
 }
 
 export interface Processor {
@@ -23,8 +46,9 @@ export interface Processor {
   type: string
   subType: string
   genre: string
-  inputType: string
+  inputTypes: string[]
   outputType: string
+  sourceBinding: string
   description: string
   useWhen: string[]
   perceivedEffect: string
@@ -35,6 +59,42 @@ export interface Processor {
 
 export interface ProcessorListResponse {
   processors: Processor[]
+}
+
+export interface AudioInput {
+  id: string
+  fileName: string
+  format: OutputFormat
+  sizeBytes: number
+  sampleRate: number
+  channels: number
+  totalFrames: number
+  durationSeconds: number
+  sha256: string
+  contentUrl: string
+}
+
+export interface AudioInputListResponse {
+  inputs: AudioInput[]
+}
+
+export interface InputBinding {
+  chainIndex: number
+  inputIndex: number
+  inputId: string
+}
+
+export interface OutputBinding {
+  chainIndex: number
+  outputIndex: number
+  fileName: string
+  format: OutputFormat
+}
+
+export interface BoundChainRequest {
+  chainYaml: string
+  inputBindings: InputBinding[]
+  outputBindings: OutputBinding[]
 }
 
 export interface ValidationIssue {
@@ -51,20 +111,58 @@ export interface ChainValidationResponse {
 
 export interface JobSubmittedResponse {
   jobId: string
-  status: string
+  status: JobState
+  createdAt: string
   statusUrl: string
+}
+
+export interface JobStatusResponse {
+  jobId: string
+  status: JobState
+  progress: number | null
+  message: string | null
+  chainPath: string | null
+  outputPath: string | null
+  createdAt: string
+  startedAt: string | null
+  finishedAt: string | null
+  error: string | null
+}
+
+export interface JobLogsResponse {
+  jobId: string
+  lines: string[]
+}
+
+export interface JobOutput {
+  index: number
+  chainName: string
+  path: string
+  fileName: string
+  format: OutputFormat
+  sizeBytes: number | null
+  available: boolean
+  downloadUrl: string
+  contentUrl: string
+}
+
+export interface JobOutputsResponse {
+  jobId: string
+  status: JobState
+  outputs: JobOutput[]
 }
 
 export interface ChainEffectDraft {
   key: string
   processorId: string
   enabled: boolean
-  params: Record<string, ParameterValue>
+  params: Record<string, ParameterDraft>
 }
 
 export interface ChainDraft {
   name: string
-  inputPath: string
-  outputPath: string
+  inputId: string
+  outputBaseName: string
+  outputFormat: OutputFormat
   effects: ChainEffectDraft[]
 }

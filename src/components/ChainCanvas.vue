@@ -1,14 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import ProcessorGlyph from '@/components/ProcessorGlyph.vue'
+import type { TopologyStage } from '@/services/chainTopology'
+import { processorTone } from '@/services/processorVisuals'
 import type { ChainEffectDraft, Processor } from '@/types/maze'
 
 const props = defineProps<{
   effects: ChainEffectDraft[]
   processors: Processor[]
   selectedKey: string | null
-  inputPath: string
-  outputPath: string
+  inputName: string
+  outputName: string
+  topologyStages: TopologyStage[]
 }>()
 
 defineEmits<{
@@ -20,19 +24,16 @@ defineEmits<{
 const processorsById = computed(
   () => new Map(props.processors.map((processor) => [processor.id, processor])),
 )
+const topologyByKey = computed(
+  () => new Map(props.topologyStages.map((stage) => [stage.effectKey, stage])),
+)
 
-function fileName(path: string, fallback: string): string {
-  if (!path) return fallback
-  return path.split(/[\\/]/).pop() || fallback
+function displayName(name: string, fallback: string): string {
+  return name || fallback
 }
 
 function nodeTone(processor?: Processor): string {
-  const type = processor?.type || ''
-  if (type.includes('EQUAL')) return 'violet'
-  if (type.includes('REVERB') || type.includes('DELAY')) return 'cyan'
-  if (type.includes('STEREO')) return 'green'
-  if (type.includes('LIMIT') || type.includes('SATUR')) return 'amber'
-  return 'blue'
+  return processorTone(processor?.type || '')
 }
 </script>
 
@@ -48,7 +49,7 @@ function nodeTone(processor?: Processor): string {
         <article class="chain-node io-node">
           <small>Input</small>
           <div class="wave-glyph">▥</div>
-          <strong>{{ fileName(inputPath, 'Select input') }}</strong>
+          <strong>{{ displayName(inputName, 'Select input') }}</strong>
         </article>
 
         <template v-for="(effect, index) in effects" :key="effect.key">
@@ -57,7 +58,11 @@ function nodeTone(processor?: Processor): string {
             class="chain-node effect-node"
             :class="[
               `tone-${nodeTone(processorsById.get(effect.processorId))}`,
-              { selected: effect.key === selectedKey, disabled: !effect.enabled },
+              {
+                selected: effect.key === selectedKey,
+                disabled: !effect.enabled,
+                incompatible: topologyByKey.get(effect.key)?.compatible === false,
+              },
             ]"
             tabindex="0"
             @click="$emit('select', effect.key)"
@@ -75,7 +80,14 @@ function nodeTone(processor?: Processor): string {
             </div>
             <strong>{{ processorsById.get(effect.processorId)?.name || effect.processorId }}</strong>
             <small>{{ effect.processorId }}</small>
-            <div class="node-visual">∿</div>
+            <small v-if="topologyByKey.get(effect.key)" class="topology-badge">
+              {{ topologyByKey.get(effect.key)?.input }}
+              →
+              {{ topologyByKey.get(effect.key)?.output }}
+            </small>
+            <div class="node-visual">
+              <ProcessorGlyph :type="processorsById.get(effect.processorId)?.type || ''" />
+            </div>
             <div class="node-order">
               <button
                 type="button"
@@ -107,7 +119,7 @@ function nodeTone(processor?: Processor): string {
         <article class="chain-node io-node">
           <small>Output</small>
           <div class="wave-glyph">▥</div>
-          <strong>{{ fileName(outputPath, 'Select output') }}</strong>
+          <strong>{{ displayName(outputName, 'Select output') }}</strong>
         </article>
       </div>
     </div>

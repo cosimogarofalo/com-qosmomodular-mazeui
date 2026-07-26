@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ProcessorGlyph from '@/components/ProcessorGlyph.vue'
 import type {
   ChainEffectDraft,
   ParameterValue,
@@ -25,6 +26,14 @@ function isNumeric(param: ProcessorParam): boolean {
   return typeof param.min === 'number' && typeof param.max === 'number'
 }
 
+function value(effect: ChainEffectDraft, param: ProcessorParam): ParameterValue {
+  return effect.params[param.name]?.value ?? null
+}
+
+function regionCount(effect: ChainEffectDraft, param: ProcessorParam): number {
+  return effect.params[param.name]?.regions.length || 0
+}
+
 function updateText(param: ProcessorParam, event: Event) {
   const value = (event.target as HTMLInputElement | HTMLSelectElement).value
   emit('update', param.name, isNumeric(param) ? Number(value) : value)
@@ -45,7 +54,9 @@ function updateBoolean(param: ProcessorParam, event: Event) {
 
     <template v-else>
       <header class="inspector-header">
-        <div class="processor-icon large">∿</div>
+        <div class="processor-icon large">
+          <ProcessorGlyph :type="processor.type" />
+        </div>
         <div>
           <strong>{{ processor.name }}</strong>
           <small>{{ processor.id }}</small>
@@ -63,16 +74,38 @@ function updateBoolean(param: ProcessorParam, event: Event) {
 
       <p class="processor-description">{{ processor.description }}</p>
 
+      <div v-if="processor.sourceBinding === 'REQUIRED'" class="source-binding-notice">
+        <strong>Source-bound processor</strong>
+        <span>
+          Fingerprint fields follow the selected managed input. Regional frame data is
+          preserved but edited outside this UI.
+        </span>
+      </div>
+
       <div class="parameter-list">
         <label v-for="param in processor.params" :key="param.name" class="parameter-control">
           <span class="parameter-label">
             <span>{{ param.name }}</span>
-            <small v-if="param.unit">{{ param.unit }}</small>
+            <span class="parameter-flags">
+              <small v-if="param.regional" class="region-badge">
+                Regional · {{ regionCount(effect, param) }}
+              </small>
+              <small v-if="param.sourceDerived" class="source-badge">Source</small>
+              <small v-if="param.unit">{{ param.unit }}</small>
+            </span>
           </span>
 
+          <input
+            v-if="param.sourceDerived"
+            type="text"
+            :value="value(effect, param)"
+            readonly
+            title="Derived from the selected managed input"
+          />
+
           <select
-            v-if="param.options?.length"
-            :value="effect.params[param.name]"
+            v-else-if="param.options?.length"
+            :value="value(effect, param)"
             @change="updateText(param, $event)"
           >
             <option v-for="option in param.options" :key="option" :value="option">
@@ -84,7 +117,7 @@ function updateBoolean(param: ProcessorParam, event: Event) {
             v-else-if="isBoolean(param)"
             class="toggle-control"
             type="checkbox"
-            :checked="Boolean(effect.params[param.name])"
+            :checked="Boolean(value(effect, param))"
             @change="updateBoolean(param, $event)"
           />
 
@@ -94,7 +127,7 @@ function updateBoolean(param: ProcessorParam, event: Event) {
               :min="param.min ?? undefined"
               :max="param.max ?? undefined"
               :step="0.01"
-              :value="effect.params[param.name]"
+              :value="value(effect, param)"
               @input="updateText(param, $event)"
             />
             <input
@@ -102,7 +135,7 @@ function updateBoolean(param: ProcessorParam, event: Event) {
               :min="param.min ?? undefined"
               :max="param.max ?? undefined"
               :step="0.01"
-              :value="effect.params[param.name]"
+              :value="value(effect, param)"
               @change="updateText(param, $event)"
             />
           </div>
@@ -110,10 +143,13 @@ function updateBoolean(param: ProcessorParam, event: Event) {
           <input
             v-else
             type="text"
-            :value="effect.params[param.name]"
+            :value="value(effect, param)"
             @change="updateText(param, $event)"
           />
 
+          <small v-if="param.regional" class="regional-note">
+            Existing source-frame regions are kept unchanged during serialization.
+          </small>
           <small v-if="param.description" class="parameter-description">
             {{ param.description }}
           </small>
