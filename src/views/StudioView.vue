@@ -27,6 +27,7 @@ let autoValidationTimer: ReturnType<typeof setTimeout> | null = null
 let dockResizeStartY = 0
 let dockResizeStartHeight = 0
 let workspaceObserver: ResizeObserver | null = null
+let dockRatio = 0.5
 
 const MINIMUM_DOCK_HEIGHT = 180
 const MINIMUM_CANVAS_HEIGHT = 220
@@ -185,11 +186,12 @@ function newChain() {
 function updateDockBounds() {
   const workspaceHeight = centerWorkspace.value?.clientHeight || 0
   if (workspaceHeight > 0) {
+    const availableHeight = workspaceHeight - DOCK_RESIZER_HEIGHT
     dockMaximum.value = Math.max(
       MINIMUM_DOCK_HEIGHT,
       workspaceHeight - MINIMUM_CANVAS_HEIGHT - DOCK_RESIZER_HEIGHT,
     )
-    dockHeight.value = clampDockHeight(dockHeight.value)
+    dockHeight.value = clampDockHeight(availableHeight * dockRatio)
   }
 }
 
@@ -211,6 +213,7 @@ function resizeDock(event: PointerEvent) {
   dockHeight.value = clampDockHeight(
     dockResizeStartHeight + dockResizeStartY - event.clientY,
   )
+  rememberDockRatio()
 }
 
 function stopDockResize(event: PointerEvent) {
@@ -232,21 +235,38 @@ function resizeDockByKeyboard(event: KeyboardEvent) {
   if (event.key === 'Home') {
     event.preventDefault()
     dockHeight.value = MINIMUM_DOCK_HEIGHT
+    rememberDockRatio()
     return
   }
   if (event.key === 'End') {
     event.preventDefault()
     dockHeight.value = dockMaximum.value
+    rememberDockRatio()
     return
   }
   const increment = increments[event.key]
   if (increment === undefined) return
   event.preventDefault()
   dockHeight.value = clampDockHeight(dockHeight.value + increment)
+  rememberDockRatio()
 }
 
 function resetDockHeight() {
-  dockHeight.value = clampDockHeight(280)
+  dockRatio = 0.5
+  const workspaceHeight = centerWorkspace.value?.clientHeight || 0
+  if (workspaceHeight > 0) {
+    updateDockBounds()
+  } else {
+    dockHeight.value = clampDockHeight(280)
+  }
+}
+
+function rememberDockRatio() {
+  const workspaceHeight = centerWorkspace.value?.clientHeight || 0
+  const availableHeight = workspaceHeight - DOCK_RESIZER_HEIGHT
+  if (availableHeight > 0) {
+    dockRatio = dockHeight.value / availableHeight
+  }
 }
 </script>
 

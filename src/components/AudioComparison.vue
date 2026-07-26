@@ -276,7 +276,7 @@ onBeforeUnmount(() => {
         aria-label="Original audio analysis and playback"
       >
         <header class="audio-source-title">
-          <span>A Â· Original</span>
+          <span>A &middot; Original</span>
           <span>{{ activeSource === 'original' ? 'Playing' : 'Ready' }}</span>
         </header>
         <div class="audio-visualizer-stack">
@@ -312,7 +312,7 @@ onBeforeUnmount(() => {
         aria-label="Rendered audio analysis and playback"
       >
         <header class="audio-source-title">
-          <span>B Â· Rendered</span>
+          <span>B &middot; Rendered</span>
           <span>{{ activeSource === 'rendered' ? 'Playing' : 'Ready' }}</span>
         </header>
         <div class="audio-visualizer-stack">

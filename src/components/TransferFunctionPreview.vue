@@ -108,7 +108,7 @@ const tracePath = computed(() => {
     <figcaption>
       <span>{{ normalizedAlgorithm.replace(/_/g, ' ') }}</span>
       <span>
-        sat {{ saturation.toFixed(2) }} Â·
+        sat {{ saturation.toFixed(2) }} &middot;
         {{ asymmetry ? 'asymmetric' : 'symmetric' }}
       </span>
     </figcaption>

@@ -1243,7 +1243,10 @@ select:focus-visible,
 .audio-visualizer-stack {
   display: grid;
   grid-template-rows: repeat(2, minmax(0, 1fr));
+  align-self: start;
   gap: 4px;
+  width: 100%;
+  height: clamp(96px, calc(var(--dock-height, 280px) - 184px), 280px);
   min-height: 0;
 }
 
