@@ -156,6 +156,37 @@ describe('critical workflow components', () => {
     expect(players.every((player) => player.element.loop === true)).toBe(true)
   })
 
+  it('aligns amplitude and spectrum visualizers above both A/B players', async () => {
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
+    const wrapper = mount(AudioComparison, {
+      props: {
+        originalUrl: '/api/audio/inputs/input/content',
+        renderedUrl: '/api/jobs/job/outputs/0/content',
+      },
+    })
+    const cards = wrapper.findAll('.audio-source-card')
+
+    expect(cards).toHaveLength(2)
+    expect(cards[0]?.findAll('canvas')).toHaveLength(2)
+    expect(cards[1]?.findAll('canvas')).toHaveLength(2)
+    expect(
+      wrapper.find('[aria-label="Original audio amplitude waveform"]').exists(),
+    ).toBe(true)
+    expect(
+      wrapper.find('[aria-label="Original audio frequency spectrum"]').exists(),
+    ).toBe(true)
+    expect(
+      wrapper.find('[aria-label="Rendered audio amplitude waveform"]').exists(),
+    ).toBe(true)
+    expect(
+      wrapper.find('[aria-label="Rendered audio frequency spectrum"]').exists(),
+    ).toBe(true)
+
+    await wrapper.findAll('.ab-actions button')[1]?.trigger('click')
+    expect(cards[0]?.classes()).not.toContain('active')
+    expect(cards[1]?.classes()).toContain('active')
+  })
+
   it('exposes auto validation as an explicit pressed-state toggle', async () => {
     const wrapper = mount(AppHeader, {
       props: {
@@ -508,6 +539,88 @@ describe('critical workflow components', () => {
     ])
   })
 
+  it('shows the selected saturation transfer function as a phosphor trace', async () => {
+    const saturator: Processor = {
+      ...processor('simple-saturator', ['MONO', 'STEREO']),
+      type: 'SATURATE',
+      params: [
+        {
+          name: 'algorithm',
+          type: 'enum',
+          min: null,
+          max: null,
+          defaultValue: 'COSINE',
+          unit: null,
+          options: ['COSINE', 'EXPONENTIAL', 'INVERSE_POWER'],
+          description: 'Saturation algorithm',
+          regional: false,
+          sourceDerived: false,
+        },
+        {
+          name: 'saturation',
+          type: 'number',
+          min: 1,
+          max: 4,
+          defaultValue: 2,
+          unit: 'linear',
+          options: [],
+          description: 'Saturation amount',
+          regional: false,
+          sourceDerived: false,
+        },
+        {
+          name: 'asymmetry',
+          type: 'enum',
+          min: null,
+          max: null,
+          defaultValue: 'false',
+          unit: null,
+          options: ['true', 'false'],
+          description: 'Asymmetry',
+          regional: false,
+          sourceDerived: false,
+        },
+      ],
+    }
+    const effect = (
+      algorithm: string,
+      amount: number,
+      asymmetry: boolean,
+    ): ChainEffectDraft => ({
+      key: 'saturator-1',
+      processorId: saturator.id,
+      enabled: true,
+      params: {
+        algorithm: { value: algorithm, regions: [] },
+        saturation: { value: amount, regions: [] },
+        asymmetry: { value: String(asymmetry), regions: [] },
+      },
+    })
+    const wrapper = mount(ProcessorInspector, {
+      props: {
+        processor: saturator,
+        effect: effect('EXPONENTIAL', 2, true),
+      },
+    })
+    const scope = wrapper.find('.transfer-scope')
+    const exponentialPath = wrapper.find('.transfer-trace').attributes('d')
+
+    expect(scope.attributes('data-algorithm')).toBe('EXPONENTIAL')
+    expect(scope.text()).toContain('sat 2.00')
+    expect(scope.text()).toContain('asymmetric')
+    expect(wrapper.find('.transfer-reference').exists()).toBe(true)
+
+    await wrapper.setProps({
+      effect: effect('INVERSE_POWER', 3, false),
+    })
+    expect(scope.attributes('data-algorithm')).toBe('INVERSE_POWER')
+    expect(scope.text()).toContain('sat 3.00')
+    expect(scope.text()).toContain('symmetric')
+    expect(wrapper.find('.transfer-trace').attributes('d')).not.toBe(
+      exponentialPath,
+    )
+  })
+
   it('shows a static phosphor waveform for lfoWave on any processor', async () => {
     const modulator: Processor = {
       ...processor('arbitrary-modulator', ['MONO', 'STEREO']),
@@ -592,6 +705,13 @@ describe('critical workflow components', () => {
     chain.bindInput(input, [monoProcessor])
     chain.addProcessor(monoProcessor, input)
     await wrapper.vm.$nextTick()
+
+    const dockResizer = wrapper.find('[aria-label="Resize chain details panel"]')
+    expect(dockResizer.attributes('aria-valuenow')).toBe('280')
+    await dockResizer.trigger('keydown', { key: 'ArrowUp' })
+    expect(dockResizer.attributes('aria-valuenow')).toBe('304')
+    await dockResizer.trigger('dblclick')
+    expect(dockResizer.attributes('aria-valuenow')).toBe('280')
 
     await wrapper.find('.auto-validate-button').trigger('click')
     await vi.advanceTimersByTimeAsync(649)

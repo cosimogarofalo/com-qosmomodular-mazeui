@@ -19,7 +19,21 @@ const chain = useChainStore()
 const workflow = useWorkflowStore()
 const uiVersion = __MAZE_UI_VERSION__
 const autoValidate = ref(false)
+const centerWorkspace = ref<HTMLElement | null>(null)
+const dockHeight = ref(280)
+const dockMaximum = ref(600)
+const resizingDock = ref(false)
 let autoValidationTimer: ReturnType<typeof setTimeout> | null = null
+let dockResizeStartY = 0
+let dockResizeStartHeight = 0
+let workspaceObserver: ResizeObserver | null = null
+
+const MINIMUM_DOCK_HEIGHT = 180
+const MINIMUM_CANVAS_HEIGHT = 220
+const DOCK_RESIZER_HEIGHT = 9
+const workspaceStyle = computed(() => ({
+  '--dock-height': `${dockHeight.value}px`,
+}))
 
 const selectedProcessor = computed(() => {
   const effect = chain.selectedEffect
@@ -72,10 +86,19 @@ const canRender = computed(
   () => renderReason.value === 'Ready to render' && !workflow.submitting,
 )
 
-onMounted(() => maze.connect())
+onMounted(() => {
+  void maze.connect()
+  if (centerWorkspace.value && window.ResizeObserver) {
+    workspaceObserver = new ResizeObserver(updateDockBounds)
+    workspaceObserver.observe(centerWorkspace.value)
+    updateDockBounds()
+  }
+})
 onBeforeUnmount(() => {
   clearAutoValidation()
   workflow.stopPolling()
+  workspaceObserver?.disconnect()
+  workspaceObserver = null
 })
 watch(
   () => chain.revision,
@@ -158,6 +181,73 @@ async function uploadInput(file: File) {
 function newChain() {
   chain.reset()
 }
+
+function updateDockBounds() {
+  const workspaceHeight = centerWorkspace.value?.clientHeight || 0
+  if (workspaceHeight > 0) {
+    dockMaximum.value = Math.max(
+      MINIMUM_DOCK_HEIGHT,
+      workspaceHeight - MINIMUM_CANVAS_HEIGHT - DOCK_RESIZER_HEIGHT,
+    )
+    dockHeight.value = clampDockHeight(dockHeight.value)
+  }
+}
+
+function clampDockHeight(value: number): number {
+  return Math.min(dockMaximum.value, Math.max(MINIMUM_DOCK_HEIGHT, value))
+}
+
+function startDockResize(event: PointerEvent) {
+  if (event.button !== 0) return
+  updateDockBounds()
+  resizingDock.value = true
+  dockResizeStartY = event.clientY
+  dockResizeStartHeight = dockHeight.value
+  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+}
+
+function resizeDock(event: PointerEvent) {
+  if (!resizingDock.value) return
+  dockHeight.value = clampDockHeight(
+    dockResizeStartHeight + dockResizeStartY - event.clientY,
+  )
+}
+
+function stopDockResize(event: PointerEvent) {
+  if (!resizingDock.value) return
+  resizingDock.value = false
+  const target = event.currentTarget as HTMLElement
+  if (target.hasPointerCapture(event.pointerId)) {
+    target.releasePointerCapture(event.pointerId)
+  }
+}
+
+function resizeDockByKeyboard(event: KeyboardEvent) {
+  const increments: Record<string, number> = {
+    ArrowUp: 24,
+    ArrowDown: -24,
+    PageUp: 80,
+    PageDown: -80,
+  }
+  if (event.key === 'Home') {
+    event.preventDefault()
+    dockHeight.value = MINIMUM_DOCK_HEIGHT
+    return
+  }
+  if (event.key === 'End') {
+    event.preventDefault()
+    dockHeight.value = dockMaximum.value
+    return
+  }
+  const increment = increments[event.key]
+  if (increment === undefined) return
+  event.preventDefault()
+  dockHeight.value = clampDockHeight(dockHeight.value + increment)
+}
+
+function resetDockHeight() {
+  dockHeight.value = clampDockHeight(280)
+}
 </script>
 
 <template>
@@ -188,7 +278,12 @@ function newChain() {
         @retry="maze.connect"
       />
 
-      <div class="center-workspace">
+      <div
+        ref="centerWorkspace"
+        class="center-workspace"
+        :class="{ resizing: resizingDock }"
+        :style="workspaceStyle"
+      >
         <ChainCanvas
           :effects="chain.draft.effects"
           :processors="maze.processors"
@@ -199,6 +294,24 @@ function newChain() {
           @select="chain.selectEffect"
           @move="chain.moveEffect"
           @remove="chain.removeEffect"
+        />
+
+        <div
+          class="dock-resizer"
+          role="separator"
+          aria-label="Resize chain details panel"
+          aria-orientation="horizontal"
+          :aria-valuemin="MINIMUM_DOCK_HEIGHT"
+          :aria-valuemax="dockMaximum"
+          :aria-valuenow="Math.round(dockHeight)"
+          tabindex="0"
+          title="Drag to resize the lower panel; double-click to reset"
+          @pointerdown="startDockResize"
+          @pointermove="resizeDock"
+          @pointerup="stopDockResize"
+          @pointercancel="stopDockResize"
+          @keydown="resizeDockByKeyboard"
+          @dblclick="resetDockHeight"
         />
 
         <BottomDock
