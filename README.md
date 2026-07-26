@@ -18,8 +18,10 @@ implementation phase.
   selected managed input
 - metadata-driven processor Inspector with source-derived fields locked read-only
 - characteristic vector glyphs for every processor type in the distributed Maze catalog
+- static green-phosphor waveform preview for every `lfoWave` parameter
 - authoritative bound validation before render, either manual or through the debounced
   `Auto validate` toggle
+- explicit `Overwrite` toggle for replacing an existing regular output under the same name
 - asynchronous job status/log polling, cancellation/deletion, ordered outputs, playback, A/B, and
   explicit downloads
 - dark studio shell based on the approved MazeUI direction
@@ -58,7 +60,7 @@ The development UI listens on `http://127.0.0.1:5173` and proxies `/api` to Maze
 Build and start Maze REST from its `main` worktree:
 
 ```powershell
-cd C:\Users\compu\maze-rest-ui-work
+cd C:\Work\Projects\IDEA\com-qosmomodular-maze
 mvn clean package
 java -jar maze-rest\target\maze-rest.jar --port 8081
 ```
@@ -72,7 +74,8 @@ npm.cmd run dev
 
 Open `http://127.0.0.1:5173`, select or upload a WAV/AIFF, add a compatible processor, choose a safe
 output base name, validate the bound draft manually or enable `Auto validate`, and render. Completed
-outputs appear in order with original/rendered playback, A/B controls, and download actions.
+outputs appear in order with original/rendered playback, A/B controls, and download actions. Keep
+`Overwrite` enabled to reuse the same output name while tuning processor parameters.
 
 ## Commands
 

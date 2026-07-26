@@ -9,6 +9,7 @@ defineProps<{
   chainName: string
   dirty: boolean
   autoValidate: boolean
+  overwriteExisting: boolean
 }>()
 
 defineEmits<{
@@ -16,6 +17,7 @@ defineEmits<{
   newChain: []
   validate: []
   toggleAutoValidate: []
+  toggleOverwriteExisting: []
 }>()
 </script>
 
@@ -54,6 +56,16 @@ defineEmits<{
         @click="$emit('toggleAutoValidate')"
       >
         Auto validate
+      </button>
+      <button
+        class="button overwrite-button"
+        :class="{ active: overwriteExisting }"
+        type="button"
+        :aria-pressed="overwriteExisting"
+        title="Replace an existing output with the same name"
+        @click="$emit('toggleOverwriteExisting')"
+      >
+        Overwrite
       </button>
       <button class="button button-primary" type="button" @click="$emit('validate')">
         Validate

@@ -169,10 +169,12 @@ function newChain() {
       :chain-name="chain.draft.name"
       :dirty="chain.dirty"
       :auto-validate="autoValidate"
+      :overwrite-existing="chain.draft.overwriteExisting"
       @reconnect="maze.connect"
       @new-chain="newChain"
       @validate="validateDraft"
       @toggle-auto-validate="toggleAutoValidate"
+      @toggle-overwrite-existing="chain.toggleOverwriteExisting"
     />
 
     <main class="studio-grid">

@@ -21,6 +21,7 @@ function defaultDraft(): ChainDraft {
     inputId: '',
     outputBaseName: 'maze-render',
     outputFormat: 'WAV',
+    overwriteExisting: true,
     effects: [],
   }
 }
@@ -165,6 +166,7 @@ export const useChainStore = defineStore('chain', {
             format: this.draft.outputFormat,
           },
         ],
+        overwriteExisting: this.draft.overwriteExisting,
       }
     },
 
@@ -261,6 +263,11 @@ export const useChainStore = defineStore('chain', {
       this.changed()
     },
 
+    toggleOverwriteExisting() {
+      this.draft.overwriteExisting = !this.draft.overwriteExisting
+      this.changed()
+    },
+
     bindInput(input: AudioInput | null, processors: Processor[]) {
       this.draft.inputId = input?.id || ''
       const byId = new Map(processors.map((processor) => [processor.id, processor]))
@@ -285,6 +292,7 @@ export const useChainStore = defineStore('chain', {
     replaceDraft(draft: ChainDraft) {
       this.draft = {
         ...draft,
+        overwriteExisting: draft.overwriteExisting ?? true,
         effects: draft.effects.map((effect) => ({
           ...effect,
           params: Object.fromEntries(

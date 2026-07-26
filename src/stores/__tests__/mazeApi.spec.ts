@@ -9,6 +9,7 @@ const boundRequest: BoundChainRequest = {
   outputBindings: [
     { chainIndex: 0, outputIndex: 0, fileName: 'render', format: 'WAV' },
   ],
+  overwriteExisting: true,
 }
 
 function jsonResponse(body: unknown, status = 200): Response {

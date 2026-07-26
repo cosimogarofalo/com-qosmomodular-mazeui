@@ -98,6 +98,7 @@ export interface BoundChainRequest {
   chainYaml: string
   inputBindings: InputBinding[]
   outputBindings: OutputBinding[]
+  overwriteExisting: boolean
 }
 
 export interface ValidationIssue {
@@ -167,5 +168,6 @@ export interface ChainDraft {
   inputId: string
   outputBaseName: string
   outputFormat: OutputFormat
+  overwriteExisting: boolean
   effects: ChainEffectDraft[]
 }

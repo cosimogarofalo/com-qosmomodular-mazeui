@@ -177,12 +177,14 @@ select:focus-visible,
   background: transparent;
 }
 
-.auto-validate-button {
+.auto-validate-button,
+.overwrite-button {
   color: #9dafc5;
   background: transparent;
 }
 
-.auto-validate-button.active {
+.auto-validate-button.active,
+.overwrite-button.active {
   border-color: #3578cc;
   color: #78b1ff;
   background: rgb(42 105 189 / 18%);

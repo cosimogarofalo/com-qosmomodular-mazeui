@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LfoWavePreview from '@/components/LfoWavePreview.vue'
 import ProcessorGlyph from '@/components/ProcessorGlyph.vue'
 import type {
   ChainEffectDraft,
@@ -24,6 +25,10 @@ function isBoolean(param: ProcessorParam): boolean {
 
 function isNumeric(param: ProcessorParam): boolean {
   return typeof param.min === 'number' && typeof param.max === 'number'
+}
+
+function isLfoWave(param: ProcessorParam): boolean {
+  return param.name.toLowerCase() === 'lfowave'
 }
 
 function value(effect: ChainEffectDraft, param: ProcessorParam): ParameterValue {
@@ -186,6 +191,11 @@ function updateBoolean(param: ProcessorParam, event: Event) {
 
       <div class="parameter-list">
         <label v-for="param in processor.params" :key="param.name" class="parameter-control">
+          <LfoWavePreview
+            v-if="isLfoWave(param)"
+            :wave="String(value(effect, param) || 'UNIPOLAR_SINE')"
+          />
+
           <span class="parameter-label">
             <span>{{ param.name }}</span>
             <span class="parameter-flags">

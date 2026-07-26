@@ -144,6 +144,7 @@ describe('critical workflow components', () => {
         chainName: 'Voice chain',
         dirty: true,
         autoValidate: false,
+        overwriteExisting: true,
       },
     })
     const button = wrapper.find('.auto-validate-button')
@@ -155,6 +156,30 @@ describe('critical workflow components', () => {
     expect(wrapper.emitted('toggleAutoValidate')).toHaveLength(1)
 
     await wrapper.setProps({ autoValidate: true })
+    expect(button.attributes('aria-pressed')).toBe('true')
+    expect(button.classes()).toContain('active')
+  })
+
+  it('exposes overwrite as an explicit pressed-state toggle', async () => {
+    const wrapper = mount(AppHeader, {
+      props: {
+        mazeStatus: 'connected',
+        mazeVersion: '0.8.0',
+        uiVersion: '0.8.0',
+        chainName: 'Voice chain',
+        dirty: true,
+        autoValidate: false,
+        overwriteExisting: false,
+      },
+    })
+    const button = wrapper.find('.overwrite-button')
+
+    expect(button.attributes('aria-pressed')).toBe('false')
+    expect(button.classes()).not.toContain('active')
+    await button.trigger('click')
+    expect(wrapper.emitted('toggleOverwriteExisting')).toHaveLength(1)
+
+    await wrapper.setProps({ overwriteExisting: true })
     expect(button.attributes('aria-pressed')).toBe('true')
     expect(button.classes()).toContain('active')
   })
@@ -278,6 +303,64 @@ describe('critical workflow components', () => {
     await slider.setValue('-10')
     updates = wrapper.emitted('update') ?? []
     expect(updates[updates.length - 1]).toEqual(['inputLevel', 0])
+  })
+
+  it('shows a static phosphor waveform for lfoWave on any processor', async () => {
+    const modulator: Processor = {
+      ...processor('arbitrary-modulator', ['MONO', 'STEREO']),
+      type: 'DELAY',
+      params: [
+        {
+          name: 'lfoWave',
+          type: 'enum',
+          min: null,
+          max: null,
+          defaultValue: 'UNIPOLAR_TRIANGLE',
+          unit: null,
+          options: ['UNIPOLAR_TRIANGLE', 'BIPOLAR_SQUARE'],
+          description: 'LFO waveform',
+          regional: false,
+          sourceDerived: false,
+        },
+      ],
+    }
+    const effect: ChainEffectDraft = {
+      key: 'modulator-1',
+      processorId: modulator.id,
+      enabled: true,
+      params: {
+        lfoWave: {
+          value: 'UNIPOLAR_TRIANGLE',
+          regions: [],
+        },
+      },
+    }
+    const wrapper = mount(ProcessorInspector, {
+      props: { processor: modulator, effect },
+    })
+    const scope = wrapper.find('.lfo-scope')
+    const trianglePath = wrapper.find('.scope-trace').attributes('d')
+
+    expect(scope.attributes('data-wave')).toBe('UNIPOLAR_TRIANGLE')
+    expect(scope.text()).toContain('offset +0.5')
+    expect(trianglePath).toMatch(/^M13\.00 39\.00 L/)
+    expect(trianglePath).toContain(' 10.00')
+    expect(trianglePath).toContain(' 68.00')
+
+    await wrapper.setProps({
+      effect: {
+        ...effect,
+        params: {
+          lfoWave: {
+            value: 'BIPOLAR_SQUARE',
+            regions: [],
+          },
+        },
+      },
+    })
+    expect(scope.attributes('data-wave')).toBe('BIPOLAR_SQUARE')
+    expect(scope.text()).toContain('zero centered')
+    expect(wrapper.find('.scope-trace').attributes('d')).not.toBe(trianglePath)
   })
 
   it('auto-validates the latest complete draft after the debounce window', async () => {

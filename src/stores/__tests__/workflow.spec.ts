@@ -15,6 +15,7 @@ const request: BoundChainRequest = {
   outputBindings: [
     { chainIndex: 0, outputIndex: 0, fileName: 'render', format: 'WAV' },
   ],
+  overwriteExisting: true,
 }
 
 const succeeded: JobStatusResponse = {

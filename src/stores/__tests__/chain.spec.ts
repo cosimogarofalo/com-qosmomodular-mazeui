@@ -103,6 +103,9 @@ describe('chain store', () => {
     expect(store.request.outputBindings).toEqual([
       { chainIndex: 0, outputIndex: 0, fileName: 'result', format: 'WAV' },
     ])
+    expect(store.request.overwriteExisting).toBe(true)
+    store.toggleOverwriteExisting()
+    expect(store.request.overwriteExisting).toBe(false)
   })
 
   it('keeps bypassed processors in the draft but omits them from Maze YAML', () => {
