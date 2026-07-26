@@ -186,6 +186,7 @@ function pathFor(curve: CompressorCurve): string {
 <style scoped>
 .compressor-scope {
   display: grid;
+  grid-template-rows: minmax(112px, 1fr) auto;
   gap: 5px;
   width: 100%;
   margin: 0;
@@ -201,7 +202,8 @@ function pathFor(curve: CompressorCurve): string {
 .compressor-scope svg {
   display: block;
   width: 100%;
-  height: 112px;
+  height: 100%;
+  min-height: 112px;
 }
 
 .compressor-screen {

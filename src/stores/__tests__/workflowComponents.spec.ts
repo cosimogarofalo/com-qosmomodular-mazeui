@@ -8,6 +8,7 @@ import AppHeader from '@/components/AppHeader.vue'
 import AudioComparison from '@/components/AudioComparison.vue'
 import ProcessorInspector from '@/components/ProcessorInspector.vue'
 import ProcessorLibrary from '@/components/ProcessorLibrary.vue'
+import ProcessorVisualization from '@/components/ProcessorVisualization.vue'
 import RenderTransport from '@/components/RenderTransport.vue'
 import { mazeApi } from '@/services/mazeApi'
 import { useChainStore } from '@/stores/chain'
@@ -588,7 +589,7 @@ describe('critical workflow components', () => {
         knee: { value: knee, regions: [] },
       },
     })
-    const wrapper = mount(ProcessorInspector, {
+    const wrapper = mount(ProcessorVisualization, {
       props: {
         processor: compressor,
         effect: effect(-20, 4, 6),
@@ -632,7 +633,7 @@ describe('critical workflow components', () => {
         { value: param.defaultValue, regions: [] },
       ]),
     ) as ChainEffectDraft['params']
-    const wrapper = mount(ProcessorInspector, {
+    const wrapper = mount(ProcessorVisualization, {
       props: {
         processor: compressor,
         effect: {
@@ -643,14 +644,159 @@ describe('critical workflow components', () => {
         },
       },
     })
-    const scope = wrapper.find('.compressor-scope')
+    const scopes = wrapper.findAll('.compressor-scope')
 
-    expect(scope.attributes('data-curve-count')).toBe('4')
+    expect(scopes).toHaveLength(4)
+    expect(scopes.every((scope) => scope.attributes('data-curve-count') === '1')).toBe(
+      true,
+    )
     expect(wrapper.findAll('.compressor-curve')).toHaveLength(4)
-    expect(scope.text()).toContain('LOW')
-    expect(scope.text()).toContain('LOW MID')
-    expect(scope.text()).toContain('HIGH MID')
-    expect(scope.text()).toContain('HIGH')
+    expect(wrapper.text()).toContain('LOW')
+    expect(wrapper.text()).toContain('LOW MID')
+    expect(wrapper.text()).toContain('HIGH MID')
+    expect(wrapper.text()).toContain('HIGH')
+  })
+
+  it('shows the Simple limiter transfer including gain, ratio, and ceiling', async () => {
+    const limiter: Processor = {
+      ...processor('simple-limiter', ['MONO', 'STEREO']),
+      type: 'LIMIT',
+      subType: 'SIMPLE',
+      params: [
+        numericParam('inputGain', 0),
+        numericParam('threshold', -12),
+        numericParam('outputCeiling', -1),
+        numericParam('dryWet', 100, '%'),
+        {
+          name: 'mode',
+          type: 'enum',
+          min: null,
+          max: null,
+          defaultValue: 'VCA',
+          unit: null,
+          options: ['VCA', 'DIODE', 'OPTICAL'],
+          description: 'Limiter mode',
+          regional: false,
+          sourceDerived: false,
+        },
+      ],
+    }
+    const effect = (
+      inputGain: number,
+      threshold: number,
+      ceiling: number,
+      mode: string,
+    ): ChainEffectDraft => ({
+      key: 'simple-limiter-1',
+      processorId: limiter.id,
+      enabled: true,
+      params: {
+        inputGain: { value: inputGain, regions: [] },
+        threshold: { value: threshold, regions: [] },
+        outputCeiling: { value: ceiling, regions: [] },
+        dryWet: { value: 100, regions: [] },
+        mode: { value: mode, regions: [] },
+      },
+    })
+    const wrapper = mount(ProcessorVisualization, {
+      props: {
+        processor: limiter,
+        effect: effect(0, -12, -1, 'VCA'),
+      },
+    })
+    const scope = wrapper.find('.limiter-scope')
+    const initialPath = wrapper.find('.limiter-trace').attributes('d')
+
+    expect(scope.attributes('data-variant')).toBe('SIMPLE')
+    expect(scope.text()).toContain('SIMPLE VCA')
+    expect(scope.text()).toContain('T -12.0 dB')
+    expect(scope.text()).toContain('R 20.0:1')
+    expect(scope.text()).toContain('C -1.0 dB')
+
+    await wrapper.setProps({
+      effect: effect(8, -24, -3, 'OPTICAL'),
+    })
+    expect(scope.text()).toContain('SIMPLE OPTICAL')
+    expect(scope.text()).toContain('G 8.0 dB')
+    expect(wrapper.find('.limiter-trace').attributes('d')).not.toBe(
+      initialPath,
+    )
+  })
+
+  it('shows the Bus limiter ceiling and reactive soft-clip stage', async () => {
+    const limiter: Processor = {
+      ...processor('bus-limiter', ['STEREO']),
+      type: 'LIMIT',
+      subType: 'BUS',
+      params: [
+        numericParam('inputGain', 0),
+        numericParam('ceiling', -1),
+        numericParam('softClipDrive', 0),
+        {
+          name: 'softClip',
+          type: 'boolean',
+          min: null,
+          max: null,
+          defaultValue: false,
+          unit: null,
+          options: [],
+          description: 'Soft clip',
+          regional: false,
+          sourceDerived: false,
+        },
+        {
+          name: 'transientMode',
+          type: 'enum',
+          min: null,
+          max: null,
+          defaultValue: 'CLEAN',
+          unit: null,
+          options: ['CLEAN', 'PUNCHY', 'SMOOTH'],
+          description: 'Transient mode',
+          regional: false,
+          sourceDerived: false,
+        },
+      ],
+    }
+    const effect = (
+      softClip: boolean,
+      drive: number,
+      transientMode: string,
+    ): ChainEffectDraft => ({
+      key: 'bus-limiter-1',
+      processorId: limiter.id,
+      enabled: true,
+      params: {
+        inputGain: { value: 0, regions: [] },
+        ceiling: { value: -1, regions: [] },
+        softClip: { value: softClip, regions: [] },
+        softClipDrive: { value: drive, regions: [] },
+        transientMode: { value: transientMode, regions: [] },
+      },
+    })
+    const wrapper = mount(ProcessorVisualization, {
+      props: {
+        processor: limiter,
+        effect: effect(false, 0, 'CLEAN'),
+      },
+    })
+    const scope = wrapper.find('.limiter-scope')
+    const initialPath = wrapper.find('.limiter-trace').attributes('d')
+
+    expect(scope.attributes('data-variant')).toBe('BUS')
+    expect(scope.text()).toContain('BUS CLEAN')
+    expect(scope.text()).toContain('C -1.0 dBTP')
+    expect(scope.text()).toContain('SOFT CLIP OFF')
+
+    await wrapper.setProps({
+      effect: effect(true, 6, 'SMOOTH'),
+    })
+    expect(scope.text()).toContain('BUS SMOOTH')
+    expect(scope.text()).toContain('SOFT CLIP ON')
+    expect(scope.text()).toContain('DRIVE 6.0 dB')
+    expect(wrapper.find('.limiter-trace').attributes('d')).not.toBe(
+      initialPath,
+    )
   })
 
   it('shows the selected saturation transfer function as a phosphor trace', async () => {

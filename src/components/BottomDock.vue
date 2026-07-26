@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 
 import AudioComparison from '@/components/AudioComparison.vue'
+import ProcessorVisualization from '@/components/ProcessorVisualization.vue'
 import { mazeApi } from '@/services/mazeApi'
 import type {
   ChainEffectDraft,
@@ -24,6 +25,8 @@ const props = defineProps<{
   jobError: string | null
   jobBusy: boolean
   originalUrl: string
+  selectedEffect?: ChainEffectDraft
+  selectedProcessor?: Processor
 }>()
 
 defineEmits<{
@@ -32,9 +35,22 @@ defineEmits<{
   clearJob: []
 }>()
 
-type DockTab = 'overview' | 'yaml' | 'validation' | 'job' | 'outputs'
+type DockTab =
+  | 'overview'
+  | 'processor'
+  | 'yaml'
+  | 'validation'
+  | 'job'
+  | 'outputs'
 const activeTab = ref<DockTab>('overview')
-const tabs: DockTab[] = ['overview', 'yaml', 'validation', 'job', 'outputs']
+const tabs: DockTab[] = [
+  'overview',
+  'processor',
+  'yaml',
+  'validation',
+  'job',
+  'outputs',
+]
 const selectedOutputIndex = ref(0)
 
 const processorsById = computed(
@@ -120,6 +136,27 @@ function bytes(value: number | null): string {
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div v-else-if="activeTab === 'processor'" class="dock-content processor-content">
+      <div v-if="!selectedEffect || !selectedProcessor" class="empty-panel">
+        Select a processor in the chain to inspect its visualization.
+      </div>
+      <template v-else>
+        <header class="processor-visualization-heading">
+          <div>
+            <strong>{{ selectedProcessor.name }}</strong>
+            <small>{{ selectedProcessor.id }}</small>
+          </div>
+          <span>
+            Adjust its parameters in the inspector; this view updates in real time.
+          </span>
+        </header>
+        <ProcessorVisualization
+          :effect="selectedEffect"
+          :processor="selectedProcessor"
+        />
+      </template>
     </div>
 
     <div v-else-if="activeTab === 'yaml'" class="dock-content yaml-content">

@@ -347,6 +347,8 @@ function rememberDockRatio() {
           :job-error="workflow.jobError"
           :job-busy="workflow.deleting"
           :original-url="workflow.originalUrl"
+          :selected-effect="chain.selectedEffect"
+          :selected-processor="selectedProcessor"
           @validate="validateDraft"
           @delete-job="workflow.deleteCurrentJob"
           @clear-job="workflow.clearJob"

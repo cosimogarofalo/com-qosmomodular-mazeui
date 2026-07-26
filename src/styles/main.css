@@ -1000,6 +1000,70 @@ select:focus-visible,
   font-weight: 500;
 }
 
+.processor-content {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  padding: 10px 12px 12px;
+}
+
+.processor-visualization-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 860px;
+  margin: 0 auto 8px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.processor-visualization-heading div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.processor-visualization-heading strong {
+  overflow: hidden;
+  color: #cbd8e7;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.processor-visualization-heading small {
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.processor-visualizations {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  margin-inline: auto;
+}
+
+.processor-visualizations > .compressor-scope,
+.processor-visualizations > .limiter-scope {
+  min-height: 0;
+}
+
+.visualization-unavailable {
+  display: grid;
+  min-height: 100%;
+  place-items: center;
+  border: 1px dashed #2a3c34;
+  border-radius: 8px;
+  color: #4f7660;
+  background: #07100c;
+  font: 9px Consolas, "Courier New", monospace;
+}
+
 .status-enabled,
 .validation-success,
 .job-status.is-succeeded {
