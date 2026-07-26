@@ -7,7 +7,7 @@ import type {
   ProcessorParam,
 } from '@/types/maze'
 
-defineProps<{
+const props = defineProps<{
   effect?: ChainEffectDraft
   processor?: Processor
 }>()
@@ -34,9 +34,111 @@ function regionCount(effect: ChainEffectDraft, param: ProcessorParam): number {
   return effect.params[param.name]?.regions.length || 0
 }
 
-function updateText(param: ProcessorParam, event: Event) {
-  const value = (event.target as HTMLInputElement | HTMLSelectElement).value
-  emit('update', param.name, isNumeric(param) ? Number(value) : value)
+function numericStep(param: ProcessorParam): number {
+  if (typeof param.step === 'number' && Number.isFinite(param.step) && param.step > 0) {
+    return param.step
+  }
+  if (param.type?.toLowerCase() === 'integer' || param.name === 'dryWet') {
+    return 1
+  }
+  return 0.01
+}
+
+function rangeController(param: ProcessorParam): string | null {
+  if (param.rangeBy) {
+    return param.rangeBy
+  }
+  return param.name === 'inputLevel' ? 'inputType' : null
+}
+
+function allowedRange(
+  effect: ChainEffectDraft,
+  param: ProcessorParam,
+  controllerOverride?: { name: string; value: ParameterValue },
+): { min: number | null; max: number | null } {
+  let min = param.min
+  let max = param.max
+  const controller = rangeController(param)
+  if (!controller) {
+    return { min, max }
+  }
+  const controllerValue =
+    controllerOverride?.name === controller
+      ? controllerOverride.value
+      : effect.params[controller]?.value
+  const contractRange = param.ranges?.[String(controllerValue)]
+  if (typeof contractRange?.min === 'number') {
+    min = contractRange.min
+  }
+  if (typeof contractRange?.max === 'number') {
+    max = contractRange.max
+  }
+
+  // Compatibility with a catalog cached from a Maze REST version that
+  // predates dependent ranges.
+  if (!contractRange && param.name === 'inputLevel') {
+    if (controllerValue === 'ATT') {
+      return { min: -127, max: 0 }
+    }
+    if (controllerValue === 'AMP') {
+      return { min: 0, max: 31 }
+    }
+  }
+  return { min, max }
+}
+
+function numericValue(
+  effect: ChainEffectDraft,
+  param: ProcessorParam,
+  rawValue: string,
+  controllerOverride?: { name: string; value: ParameterValue },
+): number {
+  let parsed = Number(rawValue)
+  if (param.type?.toLowerCase() === 'integer' || numericStep(param) === 1) {
+    parsed = Math.round(parsed)
+  }
+  const range = allowedRange(effect, param, controllerOverride)
+  if (typeof range.min === 'number') {
+    parsed = Math.max(range.min, parsed)
+  }
+  if (typeof range.max === 'number') {
+    parsed = Math.min(range.max, parsed)
+  }
+  return parsed
+}
+
+function updateText(effect: ChainEffectDraft, param: ProcessorParam, event: Event) {
+  const nextValue = (event.target as HTMLInputElement | HTMLSelectElement).value
+  emit(
+    'update',
+    param.name,
+    isNumeric(param) ? numericValue(effect, param, nextValue) : nextValue,
+  )
+  normalizeDependents(effect, param.name, nextValue)
+}
+
+function normalizeDependents(
+  effect: ChainEffectDraft,
+  controllerName: string,
+  controllerValue: ParameterValue,
+) {
+  for (const dependent of props.processor?.params ?? []) {
+    if (!isNumeric(dependent) || rangeController(dependent) !== controllerName) {
+      continue
+    }
+    const currentValue = effect.params[dependent.name]?.value
+    const currentNumber = Number(currentValue)
+    if (!Number.isFinite(currentNumber)) {
+      continue
+    }
+    const normalized = numericValue(effect, dependent, String(currentNumber), {
+      name: controllerName,
+      value: controllerValue,
+    })
+    if (normalized !== currentNumber) {
+      emit('update', dependent.name, normalized)
+    }
+  }
 }
 
 function updateBoolean(param: ProcessorParam, event: Event) {
@@ -106,7 +208,7 @@ function updateBoolean(param: ProcessorParam, event: Event) {
           <select
             v-else-if="param.options?.length"
             :value="value(effect, param)"
-            @change="updateText(param, $event)"
+            @change="updateText(effect, param, $event)"
           >
             <option v-for="option in param.options" :key="option" :value="option">
               {{ option }}
@@ -126,17 +228,17 @@ function updateBoolean(param: ProcessorParam, event: Event) {
               type="range"
               :min="param.min ?? undefined"
               :max="param.max ?? undefined"
-              :step="0.01"
+              :step="numericStep(param)"
               :value="value(effect, param)"
-              @input="updateText(param, $event)"
+              @input="updateText(effect, param, $event)"
             />
             <input
               type="number"
               :min="param.min ?? undefined"
               :max="param.max ?? undefined"
-              :step="0.01"
+              :step="numericStep(param)"
               :value="value(effect, param)"
-              @change="updateText(param, $event)"
+              @change="updateText(effect, param, $event)"
             />
           </div>
 
@@ -144,7 +246,7 @@ function updateBoolean(param: ProcessorParam, event: Event) {
             v-else
             type="text"
             :value="value(effect, param)"
-            @change="updateText(param, $event)"
+            @change="updateText(effect, param, $event)"
           />
 
           <small v-if="param.regional" class="regional-note">

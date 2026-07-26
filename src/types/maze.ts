@@ -32,6 +32,9 @@ export interface ProcessorParam {
   type: string | null
   min: number | null
   max: number | null
+  step?: number | null
+  rangeBy?: string | null
+  ranges?: Record<string, { min?: number | null; max?: number | null }>
   defaultValue: ParameterValue
   unit: string | null
   options: string[]

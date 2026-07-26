@@ -6,12 +6,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import AppHeader from '@/components/AppHeader.vue'
 import AudioComparison from '@/components/AudioComparison.vue'
+import ProcessorInspector from '@/components/ProcessorInspector.vue'
 import ProcessorLibrary from '@/components/ProcessorLibrary.vue'
 import RenderTransport from '@/components/RenderTransport.vue'
 import { mazeApi } from '@/services/mazeApi'
 import { useChainStore } from '@/stores/chain'
 import StudioView from '@/views/StudioView.vue'
-import type { AudioInput, Processor } from '@/types/maze'
+import type { AudioInput, ChainEffectDraft, Processor } from '@/types/maze'
 
 function processor(id: string, inputTypes: string[]): Processor {
   return {
@@ -156,6 +157,127 @@ describe('critical workflow components', () => {
     await wrapper.setProps({ autoValidate: true })
     expect(button.attributes('aria-pressed')).toBe('true')
     expect(button.classes()).toContain('active')
+  })
+
+  it('keeps dryWet integer even with a catalog cached from an older server', async () => {
+    const chorus: Processor = {
+      ...processor('PR-MOD-SI-CH-01', ['MONO', 'STEREO']),
+      type: 'CHORUS',
+      params: [
+        {
+          name: 'dryWet',
+          type: 'number',
+          min: 0,
+          max: 100,
+          defaultValue: 50,
+          unit: '%',
+          options: [],
+          description: 'Dry/wet mix',
+          regional: false,
+          sourceDerived: false,
+        },
+      ],
+    }
+    const effect: ChainEffectDraft = {
+      key: 'chorus-1',
+      processorId: chorus.id,
+      enabled: true,
+      params: {
+        dryWet: {
+          value: 50,
+          regions: [],
+        },
+      },
+    }
+    const wrapper = mount(ProcessorInspector, {
+      props: { processor: chorus, effect },
+    })
+    const controls = wrapper.findAll('.number-control input')
+
+    expect(controls[0]?.attributes('step')).toBe('1')
+    expect(controls[1]?.attributes('step')).toBe('1')
+    await controls[1]?.setValue('15.91')
+
+    const updates = wrapper.emitted('update') ?? []
+    expect(updates[updates.length - 1]).toEqual(['dryWet', 16])
+  })
+
+  it('keeps the full inputLevel scale but inhibits values outside ATT or AMP', async () => {
+    const chorus: Processor = {
+      ...processor('PR-MOD-SI-CH-01', ['MONO', 'STEREO']),
+      type: 'CHORUS',
+      params: [
+        {
+          name: 'inputType',
+          type: 'enum',
+          min: null,
+          max: null,
+          defaultValue: 'ATT',
+          unit: null,
+          options: ['ATT', 'AMP'],
+          description: 'Input stage type',
+          regional: false,
+          sourceDerived: false,
+        },
+        {
+          name: 'inputLevel',
+          type: 'number',
+          min: -127,
+          max: 31,
+          rangeBy: 'inputType',
+          ranges: {
+            ATT: { min: -127, max: 0 },
+            AMP: { min: 0, max: 31 },
+          },
+          defaultValue: 0,
+          unit: 'dB',
+          options: [],
+          description: 'Input level',
+          regional: false,
+          sourceDerived: false,
+        },
+      ],
+    }
+    const effect: ChainEffectDraft = {
+      key: 'chorus-1',
+      processorId: chorus.id,
+      enabled: true,
+      params: {
+        inputType: { value: 'ATT', regions: [] },
+        inputLevel: { value: -12, regions: [] },
+      },
+    }
+    const wrapper = mount(ProcessorInspector, {
+      props: { processor: chorus, effect },
+    })
+    const slider = wrapper.find('.number-control input[type="range"]')
+
+    expect(slider.attributes('min')).toBe('-127')
+    expect(slider.attributes('max')).toBe('31')
+    await slider.setValue('10')
+    let updates = wrapper.emitted('update') ?? []
+    expect(updates[updates.length - 1]).toEqual(['inputLevel', 0])
+
+    await wrapper.find('select').setValue('AMP')
+    updates = wrapper.emitted('update') ?? []
+    expect(updates.slice(-2)).toEqual([
+      ['inputType', 'AMP'],
+      ['inputLevel', 0],
+    ])
+
+    await wrapper.setProps({
+      effect: {
+        ...effect,
+        params: {
+          ...effect.params,
+          inputType: { value: 'AMP', regions: [] },
+          inputLevel: { value: 6, regions: [] },
+        },
+      },
+    })
+    await slider.setValue('-10')
+    updates = wrapper.emitted('update') ?? []
+    expect(updates[updates.length - 1]).toEqual(['inputLevel', 0])
   })
 
   it('auto-validates the latest complete draft after the debounce window', async () => {
