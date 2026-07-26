@@ -12,7 +12,12 @@ import RenderTransport from '@/components/RenderTransport.vue'
 import { mazeApi } from '@/services/mazeApi'
 import { useChainStore } from '@/stores/chain'
 import StudioView from '@/views/StudioView.vue'
-import type { AudioInput, ChainEffectDraft, Processor } from '@/types/maze'
+import type {
+  AudioInput,
+  ChainEffectDraft,
+  Processor,
+  ProcessorParam,
+} from '@/types/maze'
 
 function processor(id: string, inputTypes: string[]): Processor {
   return {
@@ -30,6 +35,25 @@ function processor(id: string, inputTypes: string[]): Processor {
     category: 'test',
     position: 'middle',
     params: [],
+  }
+}
+
+function numericParam(
+  name: string,
+  defaultValue: number,
+  unit = 'dB',
+): ProcessorParam {
+  return {
+    name,
+    type: 'number',
+    min: -60,
+    max: 24,
+    defaultValue,
+    unit,
+    options: [],
+    description: name,
+    regional: false,
+    sourceDerived: false,
   }
 }
 
@@ -537,6 +561,96 @@ describe('critical workflow components', () => {
       'FILTER_FREQUENCY',
       'FILTER_BANDWIDTH',
     ])
+  })
+
+  it('shows a reactive compressor transfer curve for threshold, ratio, and knee', async () => {
+    const compressor: Processor = {
+      ...processor('simple-compressor', ['MONO', 'STEREO']),
+      type: 'COMPRESS',
+      subType: 'SIMPLE',
+      params: [
+        numericParam('threshold', -20),
+        numericParam('ratio', 4, ':1'),
+        numericParam('knee', 6),
+      ],
+    }
+    const effect = (
+      threshold: number,
+      ratio: number,
+      knee: number,
+    ): ChainEffectDraft => ({
+      key: 'compressor-1',
+      processorId: compressor.id,
+      enabled: true,
+      params: {
+        threshold: { value: threshold, regions: [] },
+        ratio: { value: ratio, regions: [] },
+        knee: { value: knee, regions: [] },
+      },
+    })
+    const wrapper = mount(ProcessorInspector, {
+      props: {
+        processor: compressor,
+        effect: effect(-20, 4, 6),
+      },
+    })
+    const scope = wrapper.find('.compressor-scope')
+    const initialPath = wrapper.find('.compressor-trace').attributes('d')
+
+    expect(scope.attributes('data-curve-count')).toBe('1')
+    expect(scope.text()).toContain('T -20.0 dB')
+    expect(scope.text()).toContain('R 4.0:1')
+    expect(scope.text()).toContain('K 6.0 dB')
+    expect(wrapper.find('.compressor-reference').exists()).toBe(true)
+
+    await wrapper.setProps({
+      effect: effect(-36, 10, 0),
+    })
+    expect(scope.text()).toContain('T -36.0 dB')
+    expect(scope.text()).toContain('R 10.0:1')
+    expect(scope.text()).toContain('K 0.0 dB')
+    expect(wrapper.find('.compressor-trace').attributes('d')).not.toBe(
+      initialPath,
+    )
+  })
+
+  it('shows all four independent multiband compressor curves', () => {
+    const bands = ['low', 'lowMid', 'highMid', 'high']
+    const compressor: Processor = {
+      ...processor('multiband-compressor', ['MONO', 'STEREO']),
+      type: 'COMPRESS',
+      subType: 'MULTIBAND',
+      params: bands.flatMap((band, index) => [
+        numericParam(`${band}Threshold`, -18 - index),
+        numericParam(`${band}Ratio`, 2 + index, ':1'),
+        numericParam(`${band}Knee`, 3 + index),
+      ]),
+    }
+    const params = Object.fromEntries(
+      compressor.params.map((param) => [
+        param.name,
+        { value: param.defaultValue, regions: [] },
+      ]),
+    ) as ChainEffectDraft['params']
+    const wrapper = mount(ProcessorInspector, {
+      props: {
+        processor: compressor,
+        effect: {
+          key: 'multiband-compressor-1',
+          processorId: compressor.id,
+          enabled: true,
+          params,
+        },
+      },
+    })
+    const scope = wrapper.find('.compressor-scope')
+
+    expect(scope.attributes('data-curve-count')).toBe('4')
+    expect(wrapper.findAll('.compressor-curve')).toHaveLength(4)
+    expect(scope.text()).toContain('LOW')
+    expect(scope.text()).toContain('LOW MID')
+    expect(scope.text()).toContain('HIGH MID')
+    expect(scope.text()).toContain('HIGH')
   })
 
   it('shows the selected saturation transfer function as a phosphor trace', async () => {

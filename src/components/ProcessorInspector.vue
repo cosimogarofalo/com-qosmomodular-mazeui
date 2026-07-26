@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CompressorTransferPreview from '@/components/CompressorTransferPreview.vue'
 import LfoWavePreview from '@/components/LfoWavePreview.vue'
 import ProcessorGlyph from '@/components/ProcessorGlyph.vue'
 import TransferFunctionPreview from '@/components/TransferFunctionPreview.vue'
@@ -51,6 +52,57 @@ function saturationAmount(
 
 function saturationAsymmetry(effect: ChainEffectDraft): boolean {
   return String(effect.params.asymmetry?.value ?? false).toLowerCase() === 'true'
+}
+
+function processorNumber(
+  effect: ChainEffectDraft,
+  processor: Processor,
+  name: string,
+  fallback: number,
+): number {
+  const contractDefault = processor.params.find((param) => param.name === name)
+    ?.defaultValue
+  const number = Number(effect.params[name]?.value ?? contractDefault ?? fallback)
+  return Number.isFinite(number) ? number : fallback
+}
+
+function compressorCurves(
+  effect: ChainEffectDraft,
+  processor: Processor,
+): Array<{ label: string; threshold: number; ratio: number; knee: number }> {
+  if (processor.subType === 'MULTIBAND') {
+    const bands = [
+      ['LOW', 'low'],
+      ['LOW MID', 'lowMid'],
+      ['HIGH MID', 'highMid'],
+      ['HIGH', 'high'],
+    ] as const
+    return bands.map(([label, prefix]) => ({
+      label,
+      threshold: processorNumber(
+        effect,
+        processor,
+        `${prefix}Threshold`,
+        -18,
+      ),
+      ratio: processorNumber(effect, processor, `${prefix}Ratio`, 2),
+      knee: processorNumber(
+        effect,
+        processor,
+        `${prefix}Knee`,
+        processorNumber(effect, processor, 'knee', 6),
+      ),
+    }))
+  }
+
+  return [
+    {
+      label: processor.subType === 'BUS' ? 'BUS' : 'WIDEBAND',
+      threshold: processorNumber(effect, processor, 'threshold', -18),
+      ratio: processorNumber(effect, processor, 'ratio', 2),
+      knee: processorNumber(effect, processor, 'knee', 6),
+    },
+  ]
 }
 
 function controllerValue(
@@ -259,6 +311,11 @@ function updateBoolean(param: ProcessorParam, event: Event) {
           preserved but edited outside this UI.
         </span>
       </div>
+
+      <CompressorTransferPreview
+        v-if="processor.type === 'COMPRESS'"
+        :curves="compressorCurves(effect, processor)"
+      />
 
       <div class="parameter-list">
         <label
