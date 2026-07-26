@@ -3,12 +3,22 @@ import { computed } from 'vue'
 
 export interface EqBand {
   label: string
-  type: 'BELL' | 'LOW_SHELF' | 'HIGH_SHELF' | 'HIGH_PASS' | 'LOW_PASS'
+  type:
+    | 'BELL'
+    | 'LOW_SHELF'
+    | 'HIGH_SHELF'
+    | 'HIGH_PASS'
+    | 'LOW_PASS'
+    | 'CROSSOVER_LOW'
+    | 'CROSSOVER_BAND'
+    | 'CROSSOVER_HIGH'
   enabled: boolean
   frequency: number
+  highFrequency?: number
   gain: number
   q?: number
   slope?: number
+  detail?: string
 }
 
 interface Complex {
@@ -29,6 +39,8 @@ const props = withDefaults(
     outputGain?: number
     dryWet?: number
     dynamic?: boolean
+    parallel?: boolean
+    note?: string
   }>(),
   {
     sampleRate: 48_000,
@@ -36,6 +48,8 @@ const props = withDefaults(
     outputGain: 0,
     dryWet: 100,
     dynamic: false,
+    parallel: false,
+    note: '',
   },
 )
 
@@ -77,6 +91,11 @@ const normalizedBands = computed(() =>
     enabled: Boolean(band.enabled),
     frequency: clamp(
       Number(band.frequency) || minimumFrequency,
+      minimumFrequency,
+      maximumFrequency.value,
+    ),
+    highFrequency: clamp(
+      Number(band.highFrequency) || Number(band.frequency) || minimumFrequency,
       minimumFrequency,
       maximumFrequency.value,
     ),
@@ -310,19 +329,48 @@ function bandResponse(
   band: (typeof normalizedBands.value)[number],
   frequency: number,
 ): Complex {
-  return band.enabled
-    ? filterResponse(coefficientsFor(band), frequency)
-    : { re: 1, im: 0 }
+  if (!band.enabled) return { re: 1, im: 0 }
+  if (!band.type.startsWith('CROSSOVER_')) {
+    return filterResponse(coefficientsFor(band), frequency)
+  }
+
+  const linkwitzRiley = (high: boolean, crossover: number) => {
+    const stage = filterResponse(
+      passCoefficients(high, crossover, 2),
+      frequency,
+    )
+    return complexMultiply(stage, stage)
+  }
+  let response = { re: 1, im: 0 }
+  if (band.type === 'CROSSOVER_LOW') {
+    response = linkwitzRiley(false, band.frequency)
+  } else if (band.type === 'CROSSOVER_HIGH') {
+    response = linkwitzRiley(true, band.frequency)
+  } else {
+    response = complexMultiply(
+      linkwitzRiley(true, band.frequency),
+      linkwitzRiley(false, band.highFrequency),
+    )
+  }
+  return complexScale(response, 10 ** (band.gain / 20))
 }
 
 function totalResponse(frequency: number): Complex {
-  let wet = {
-    re: 10 ** (clamp(Number(props.inputGain) || 0, -24, 24) / 20),
-    im: 0,
-  }
-  normalizedBands.value.forEach((band) => {
-    wet = complexMultiply(wet, bandResponse(band, frequency))
-  })
+  let wet = props.parallel
+    ? normalizedBands.value.reduce(
+        (response, band) =>
+          complexAdd(response, bandResponse(band, frequency)),
+        { re: 0, im: 0 },
+      )
+    : normalizedBands.value.reduce(
+        (response, band) =>
+          complexMultiply(response, bandResponse(band, frequency)),
+        { re: 1, im: 0 },
+      )
+  wet = complexScale(
+    wet,
+    10 ** (clamp(Number(props.inputGain) || 0, -24, 24) / 20),
+  )
   const wetAmount = clamp(Number(props.dryWet) || 0, 0, 100) / 100
   const mixed = complexAdd(
     { re: 1 - wetAmount, im: 0 },
@@ -496,6 +544,17 @@ function frequencyLabel(frequency: number): string {
       </g>
     </svg>
 
+    <div
+      v-if="normalizedBands.some((band) => band.detail)"
+      class="eq-band-legend"
+    >
+      <span v-for="(band, index) in normalizedBands" :key="`detail-${band.label}`">
+        <i :style="{ background: colors[index % colors.length] }" />
+        <strong>{{ band.label }}</strong>
+        {{ band.detail }}
+      </span>
+    </div>
+
     <figcaption>
       <span>
         <i class="eq-total-key" />
@@ -511,6 +570,7 @@ function frequencyLabel(frequency: number): string {
         Curves show maximum Range; threshold, attack, release and audio level
         determine the instantaneous movement.
       </small>
+      <small v-else-if="note">{{ note }}</small>
       <small v-else>
         Colored traces are individual bands; the bright trace is their combined
         response. Final nonlinear ceiling is not shown.
@@ -617,6 +677,33 @@ function frequencyLabel(frequency: number): string {
   color: #4f9d69;
   font-family: Consolas, 'Courier New', monospace;
   font-size: 7px;
+}
+
+.eq-band-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 3px 9px;
+  padding: 1px 3px;
+  color: #4f9d69;
+  font: 7px Consolas, 'Courier New', monospace;
+}
+
+.eq-band-legend span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.eq-band-legend i {
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.eq-band-legend strong {
+  color: #70cf8d;
 }
 
 .eq-scope figcaption span {

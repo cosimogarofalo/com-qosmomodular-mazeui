@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import LfoWavePreview from '@/components/LfoWavePreview.vue'
 import ProcessorGlyph from '@/components/ProcessorGlyph.vue'
-import TransferFunctionPreview from '@/components/TransferFunctionPreview.vue'
 import type {
   ChainEffectDraft,
   ParameterValue,
@@ -30,27 +29,6 @@ function isNumeric(param: ProcessorParam): boolean {
 
 function isLfoWave(param: ProcessorParam): boolean {
   return param.name.toLowerCase() === 'lfowave'
-}
-
-function isSaturationAlgorithm(
-  processor: Processor,
-  param: ProcessorParam,
-): boolean {
-  return processor.type === 'SATURATE' && param.name.toLowerCase() === 'algorithm'
-}
-
-function saturationAmount(
-  effect: ChainEffectDraft,
-  processor: Processor,
-): number {
-  const fallback = processor.params.find((param) => param.name === 'saturation')
-    ?.defaultValue
-  const amount = Number(effect.params.saturation?.value ?? fallback ?? 1)
-  return Number.isFinite(amount) ? amount : 1
-}
-
-function saturationAsymmetry(effect: ChainEffectDraft): boolean {
-  return String(effect.params.asymmetry?.value ?? false).toLowerCase() === 'true'
 }
 
 function controllerValue(
@@ -266,13 +244,6 @@ function updateBoolean(param: ProcessorParam, event: Event) {
           :key="param.name"
           class="parameter-control"
         >
-          <TransferFunctionPreview
-            v-if="isSaturationAlgorithm(processor, param)"
-            :algorithm="String(value(effect, param) || 'COSINE')"
-            :saturation="saturationAmount(effect, processor)"
-            :asymmetry="saturationAsymmetry(effect)"
-          />
-
           <LfoWavePreview
             v-if="isLfoWave(param)"
             :wave="String(value(effect, param) || 'UNIPOLAR_SINE')"

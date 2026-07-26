@@ -79,7 +79,9 @@ watch(
 watch(
   () => props.validation,
   (validation) => {
-    if (validation) activeTab.value = 'validation'
+    if (validation && activeTab.value !== 'processor') {
+      activeTab.value = 'validation'
+    }
   },
 )
 watch(

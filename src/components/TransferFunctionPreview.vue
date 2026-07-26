@@ -118,8 +118,10 @@ const tracePath = computed(() => {
 <style scoped>
 .transfer-scope {
   display: grid;
+  grid-template-rows: minmax(82px, 1fr) auto;
   gap: 5px;
   width: 100%;
+  height: 100%;
   margin: 0;
   border: 1px solid #1d4933;
   border-radius: 8px;
@@ -133,7 +135,8 @@ const tracePath = computed(() => {
 .transfer-scope svg {
   display: block;
   width: 100%;
-  height: 82px;
+  height: 100%;
+  min-height: 82px;
 }
 
 .transfer-screen {

@@ -4,6 +4,7 @@ import EqFrequencyResponse, {
   type EqBand,
 } from '@/components/EqFrequencyResponse.vue'
 import LimiterTransferPreview from '@/components/LimiterTransferPreview.vue'
+import TransferFunctionPreview from '@/components/TransferFunctionPreview.vue'
 import type { ChainEffectDraft, Processor } from '@/types/maze'
 
 const props = defineProps<{
@@ -218,12 +219,74 @@ function eqBands(): EqBand[] {
   if (props.processor.subType === 'DYNAMIC') return dynamicSettings()
   return parametricSettings()
 }
+
+function simpleSaturatorTone(): EqBand[] {
+  return [
+    {
+      label: 'BASS',
+      type: 'LOW_SHELF',
+      enabled: true,
+      frequency: 302.04,
+      gain: processorNumber('bass', 0),
+    },
+    {
+      label: 'TREBLE',
+      type: 'HIGH_SHELF',
+      enabled: true,
+      frequency: 4_063.75,
+      gain: processorNumber('treble', 0),
+    },
+  ]
+}
+
+function multibandSaturatorBands(): EqBand[] {
+  const definitions = [
+    ['LOW', 'low', 'CROSSOVER_LOW', 120, undefined],
+    ['LOW MID', 'lowMid', 'CROSSOVER_BAND', 120, 800],
+    ['HIGH MID', 'highMid', 'CROSSOVER_BAND', 800, 4_000],
+    ['HIGH', 'high', 'CROSSOVER_HIGH', 4_000, undefined],
+  ] as const
+  return definitions.map(
+    ([label, prefix, type, frequency, highFrequency]) => {
+      const drive = processorNumber(`${prefix}Drive`, 0)
+      const mix = processorNumber(`${prefix}Mix`, 0)
+      const gain = processorNumber(`${prefix}Gain`, 0)
+      return {
+        label,
+        type,
+        enabled: true,
+        frequency,
+        highFrequency,
+        gain,
+        detail: `D ${drive.toFixed(1)} dB · M ${mix.toFixed(0)}% · G ${gain.toFixed(1)} dB`,
+      }
+    },
+  )
+}
+
+function saturatorAlgorithm(): string {
+  return processorString('algorithm', 'COSINE')
+}
+
+function saturatorAmount(): number {
+  return processorNumber('saturation', 1)
+}
+
+function saturatorAsymmetry(): boolean {
+  return processorBoolean('asymmetry', false)
+}
+
+function visualizationCount(): number {
+  if (props.processor.type === 'COMPRESS') return compressorCurves().length
+  if (props.processor.type === 'SATURATE') return 2
+  return 1
+}
 </script>
 
 <template>
   <div
     class="processor-visualizations"
-    :data-count="processor.type === 'COMPRESS' ? compressorCurves().length : 1"
+    :data-count="visualizationCount()"
   >
     <template v-if="processor.type === 'COMPRESS'">
       <CompressorTransferPreview
@@ -245,6 +308,29 @@ function eqBands(): EqBand[] {
       :dry-wet="processor.type === 'TONE' || processor.subType === 'TEN_BANDS' ? 100 : processorNumber('dryWet', 100)"
       :dynamic="processor.subType === 'DYNAMIC'"
     />
+    <template v-else-if="processor.type === 'SATURATE'">
+      <TransferFunctionPreview
+        :algorithm="saturatorAlgorithm()"
+        :saturation="saturatorAmount()"
+        :asymmetry="saturatorAsymmetry()"
+      />
+      <EqFrequencyResponse
+        v-if="processor.subType === 'MULTIBAND'"
+        :bands="multibandSaturatorBands()"
+        :sample-rate="sampleRate"
+        :input-gain="processorNumber('inputGain', 0)"
+        :output-gain="processorNumber('outputGain', 0)"
+        :dry-wet="processorNumber('dryWet', 100)"
+        parallel
+        note="Linkwitz-Riley band response with post-band Gain. Drive and Mix change the nonlinear coloration and are shown in the band legend."
+      />
+      <EqFrequencyResponse
+        v-else
+        :bands="simpleSaturatorTone()"
+        :sample-rate="sampleRate"
+        :note="`Tone section in ${processorString('toneControlPosition', 'POST')} position; the nonlinear saturation stage is shown separately.`"
+      />
+    </template>
     <div v-else class="visualization-unavailable">
       No dedicated visualization is available for this processor yet.
     </div>

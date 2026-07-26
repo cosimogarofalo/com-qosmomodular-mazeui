@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import AppHeader from '@/components/AppHeader.vue'
 import AudioComparison from '@/components/AudioComparison.vue'
+import BottomDock from '@/components/BottomDock.vue'
 import ProcessorInspector from '@/components/ProcessorInspector.vue'
 import ProcessorLibrary from '@/components/ProcessorLibrary.vue'
 import ProcessorVisualization from '@/components/ProcessorVisualization.vue'
@@ -75,6 +76,41 @@ describe('critical workflow components', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.useRealTimers()
+  })
+
+  it('keeps the Processor tab selected when auto-validation completes', async () => {
+    const wrapper = mount(BottomDock, {
+      props: {
+        effects: [],
+        processors: [],
+        yaml: '',
+        validation: null,
+        validationError: null,
+        validating: false,
+        job: null,
+        jobLogs: [],
+        outputs: [],
+        jobError: null,
+        jobBusy: false,
+        originalUrl: '',
+      },
+    })
+    const processorTab = wrapper
+      .findAll('.dock-tabs button')
+      .find((button) => button.text() === 'processor')
+
+    expect(processorTab).toBeDefined()
+    await processorTab?.trigger('click')
+    await wrapper.setProps({
+      validation: {
+        valid: true,
+        errors: [],
+        warnings: [],
+      },
+    })
+
+    expect(processorTab?.classes()).toContain('active')
+    expect(wrapper.find('.processor-content').exists()).toBe(true)
   })
 
   it('prevents stereo-only processor placement for a mono input', async () => {
@@ -1054,6 +1090,9 @@ describe('critical workflow components', () => {
       algorithm: string,
       amount: number,
       asymmetry: boolean,
+      bass = 0,
+      treble = 0,
+      toneControlPosition = 'POST',
     ): ChainEffectDraft => ({
       key: 'saturator-1',
       processorId: saturator.id,
@@ -1062,24 +1101,30 @@ describe('critical workflow components', () => {
         algorithm: { value: algorithm, regions: [] },
         saturation: { value: amount, regions: [] },
         asymmetry: { value: String(asymmetry), regions: [] },
+        bass: { value: bass, regions: [] },
+        treble: { value: treble, regions: [] },
+        toneControlPosition: { value: toneControlPosition, regions: [] },
       },
     })
-    const wrapper = mount(ProcessorInspector, {
+    const wrapper = mount(ProcessorVisualization, {
       props: {
         processor: saturator,
-        effect: effect('EXPONENTIAL', 2, true),
+        effect: effect('EXPONENTIAL', 2, true, 5, -3),
       },
     })
     const scope = wrapper.find('.transfer-scope')
     const exponentialPath = wrapper.find('.transfer-trace').attributes('d')
+    const tonePath = wrapper.find('.eq-total-trace').attributes('d')
 
     expect(scope.attributes('data-algorithm')).toBe('EXPONENTIAL')
     expect(scope.text()).toContain('sat 2.00')
     expect(scope.text()).toContain('asymmetric')
     expect(wrapper.find('.transfer-reference').exists()).toBe(true)
+    expect(wrapper.find('.eq-scope').attributes('data-band-count')).toBe('2')
+    expect(wrapper.text()).toContain('Tone section in POST position')
 
     await wrapper.setProps({
-      effect: effect('INVERSE_POWER', 3, false),
+      effect: effect('INVERSE_POWER', 3, false, -7, 8, 'PRE'),
     })
     expect(scope.attributes('data-algorithm')).toBe('INVERSE_POWER')
     expect(scope.text()).toContain('sat 3.00')
@@ -1087,6 +1132,70 @@ describe('critical workflow components', () => {
     expect(wrapper.find('.transfer-trace').attributes('d')).not.toBe(
       exponentialPath,
     )
+    expect(wrapper.find('.eq-total-trace').attributes('d')).not.toBe(tonePath)
+    expect(wrapper.text()).toContain('Tone section in PRE position')
+  })
+
+  it('shows four reactive Linkwitz-Riley regions for the Multiband Saturator', async () => {
+    const prefixes = ['low', 'lowMid', 'highMid', 'high']
+    const saturator: Processor = {
+      ...processor('multiband-saturator', ['MONO', 'STEREO']),
+      type: 'SATURATE',
+      subType: 'MULTIBAND',
+      params: prefixes.flatMap((prefix) => [
+        numericParam(`${prefix}Drive`, 1),
+        numericParam(`${prefix}Mix`, 35, '%'),
+        numericParam(`${prefix}Gain`, 0),
+      ]),
+    }
+    const effect = (highMidGain: number): ChainEffectDraft => ({
+      key: 'multiband-saturator-1',
+      processorId: saturator.id,
+      enabled: true,
+      params: {
+        algorithm: { value: 'COSINE', regions: [] },
+        saturation: { value: 1.6, regions: [] },
+        asymmetry: { value: 'false', regions: [] },
+        inputGain: { value: 0, regions: [] },
+        outputGain: { value: 0, regions: [] },
+        dryWet: { value: 100, regions: [] },
+        lowDrive: { value: 1.5, regions: [] },
+        lowMix: { value: 35, regions: [] },
+        lowGain: { value: -0.5, regions: [] },
+        lowMidDrive: { value: 2, regions: [] },
+        lowMidMix: { value: 45, regions: [] },
+        lowMidGain: { value: 0, regions: [] },
+        highMidDrive: { value: 1.5, regions: [] },
+        highMidMix: { value: 35, regions: [] },
+        highMidGain: { value: highMidGain, regions: [] },
+        highDrive: { value: 1, regions: [] },
+        highMix: { value: 25, regions: [] },
+        highGain: { value: 0, regions: [] },
+      },
+    })
+    const wrapper = mount(ProcessorVisualization, {
+      props: {
+        processor: saturator,
+        effect: effect(0),
+        sampleRate: 48_000,
+      },
+    })
+    const initialPath = wrapper.find('.eq-total-trace').attributes('d')
+    const scope = wrapper.find('.eq-scope')
+
+    expect(wrapper.find('.transfer-scope').exists()).toBe(true)
+    expect(scope.attributes('data-band-count')).toBe('4')
+    expect(wrapper.findAll('.eq-band')).toHaveLength(4)
+    expect(wrapper.text()).toContain('LOW MID')
+    expect(wrapper.text()).toContain('HIGH MID')
+    expect(wrapper.text()).toContain('D 1.5 dB')
+    expect(wrapper.text()).toContain('M 35%')
+
+    await wrapper.setProps({ effect: effect(6) })
+    expect(wrapper.find('.eq-total-trace').attributes('d')).not.toBe(
+      initialPath,
+    )
+    expect(wrapper.text()).toContain('G 6.0 dB')
   })
 
   it('shows a static phosphor waveform for lfoWave on any processor', async () => {
