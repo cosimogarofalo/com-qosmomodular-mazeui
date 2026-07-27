@@ -6,6 +6,13 @@ MazeUI is a Vue 3 single-page application. Maze remains the authority for the pr
 chain validation, DSP rendering, jobs, logs, and outputs. MazeAI is intentionally outside the first
 implementation phase.
 
+## Interface preview
+
+The following screenshot is an example of the MazeUI graphical interface. The exact layout and
+available controls may evolve with the processor catalog and ongoing UI work.
+
+![MazeUI graphical interface example](docs/images/MazeUI_Screenshot.png)
+
 ## Current workflow
 
 - Vue 3, TypeScript, Vite, Pinia, and Vue Router
@@ -22,8 +29,8 @@ implementation phase.
 - authoritative bound validation before render, either manual or through the debounced
   `Auto validate` toggle
 - explicit `Overwrite` toggle for replacing an existing regular output under the same name
-- asynchronous job status/log polling, cancellation/deletion, ordered outputs, playback, A/B, and
-  explicit downloads
+- asynchronous job status/log polling, cancellation/deletion, ordered outputs, playback, A/B,
+  live amplitude/spectrum views, RMS/sample-peak meters, and explicit downloads
 - dark studio shell based on the approved MazeUI direction
 - Vue Flow dependency reserved for the constrained visual canvas integration
 

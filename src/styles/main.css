@@ -1304,6 +1304,19 @@ select:focus-visible,
   color: #63ff9b;
 }
 
+.audio-analysis-layout {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: start;
+  gap: 6px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.audio-analysis-layout.meter-trailing {
+  grid-template-columns: minmax(0, 1fr) 76px;
+}
+
 .audio-visualizer-stack {
   display: grid;
   grid-template-rows: repeat(2, minmax(0, 1fr));
@@ -1348,6 +1361,142 @@ select:focus-visible,
 
 .audio-source-card.active .audio-visualizer-stack canvas {
   opacity: 1;
+}
+
+.audio-level-meter {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 4px;
+  height: clamp(96px, calc(var(--dock-height, 280px) - 184px), 280px);
+  min-height: 0;
+  border: 1px solid #173c2b;
+  border-radius: 3px;
+  padding: 5px;
+  background:
+    linear-gradient(rgb(62 184 105 / 7%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(62 184 105 / 7%) 1px, transparent 1px),
+    #020906;
+  background-size: 10px 10px;
+  opacity: 0.68;
+  transition:
+    border-color 120ms ease,
+    opacity 120ms ease;
+}
+
+.audio-source-card.active .audio-level-meter {
+  border-color: #2c704a;
+  opacity: 1;
+}
+
+.audio-level-meter > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  color: #557263;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.audio-level-meter > header small {
+  color: #527c65;
+  font-size: 6px;
+}
+
+.audio-meter-body {
+  display: grid;
+  grid-template-columns: 29px minmax(18px, 1fr);
+  gap: 4px;
+  min-height: 0;
+}
+
+.audio-meter-scale {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #6a9277;
+  font: 7px/1 "JetBrains Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.audio-meter-track {
+  position: relative;
+  min-height: 40px;
+  overflow: hidden;
+  border: 1px solid #20563a;
+  border-radius: 2px;
+  background: #010503;
+  box-shadow: inset 0 0 8px rgb(0 0 0 / 70%);
+}
+
+.audio-meter-track::after {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 4px,
+    rgb(1 5 3 / 80%) 4px,
+    rgb(1 5 3 / 80%) 6px
+  );
+  content: '';
+  pointer-events: none;
+}
+
+.audio-meter-rms {
+  position: absolute;
+  inset: 1px 2px;
+  border-radius: 1px;
+  background: linear-gradient(
+    to top,
+    #168e4c 0%,
+    #55f493 62%,
+    #e1d957 82%,
+    #ff665f 100%
+  );
+  box-shadow: 0 0 6px rgb(53 242 125 / 55%);
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 45ms linear;
+}
+
+.audio-meter-peak {
+  position: absolute;
+  right: 1px;
+  left: 1px;
+  z-index: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: #d7ffe5;
+  box-shadow:
+    0 0 4px #63ff9b,
+    0 0 8px rgb(99 255 155 / 65%);
+  transition: bottom 45ms linear;
+}
+
+.audio-meter-values {
+  display: grid;
+  gap: 3px;
+  border-top: 1px solid #173c2b;
+  padding-top: 3px;
+  color: #739181;
+  font: 7px/1.2 "JetBrains Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+}
+
+.audio-meter-values span {
+  display: flex;
+  justify-content: space-between;
+  gap: 2px;
+}
+
+.audio-meter-values strong {
+  color: #a9ffc5;
+  font-weight: 700;
+  text-shadow: 0 0 4px rgb(99 255 155 / 38%);
 }
 
 .audio-players audio {

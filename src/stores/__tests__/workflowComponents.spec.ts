@@ -11,6 +11,10 @@ import ProcessorInspector from '@/components/ProcessorInspector.vue'
 import ProcessorLibrary from '@/components/ProcessorLibrary.vue'
 import ProcessorVisualization from '@/components/ProcessorVisualization.vue'
 import RenderTransport from '@/components/RenderTransport.vue'
+import {
+  AUDIO_METER_FLOOR_DB,
+  calculateAudioMeterLevels,
+} from '@/services/audioMeter'
 import { mazeApi } from '@/services/mazeApi'
 import { useChainStore } from '@/stores/chain'
 import StudioView from '@/views/StudioView.vue'
@@ -242,10 +246,40 @@ describe('critical workflow components', () => {
     expect(
       wrapper.find('[aria-label="Rendered audio frequency spectrum"]').exists(),
     ).toBe(true)
+    expect(
+      wrapper.find('[aria-label="Original audio RMS and peak meter"]').exists(),
+    ).toBe(true)
+    expect(
+      wrapper.find('[aria-label="Rendered audio RMS and peak meter"]').exists(),
+    ).toBe(true)
+
+    const analysisLayouts = wrapper.findAll('.audio-analysis-layout')
+    expect(analysisLayouts[0]?.element.firstElementChild?.classList).toContain(
+      'audio-level-meter',
+    )
+    expect(analysisLayouts[1]?.element.lastElementChild?.classList).toContain(
+      'audio-level-meter',
+    )
 
     await wrapper.findAll('.ab-actions button')[1]?.trigger('click')
     expect(cards[0]?.classes()).not.toContain('active')
     expect(cards[1]?.classes()).toContain('active')
+  })
+
+  it('calculates RMS and sample peak meter levels in dBFS', () => {
+    const halfScale = calculateAudioMeterLevels(
+      new Float32Array([0.5, -0.5]),
+    )
+    expect(halfScale.rmsDb).toBeCloseTo(-6.0206, 3)
+    expect(halfScale.peakDb).toBeCloseTo(-6.0206, 3)
+
+    const transient = calculateAudioMeterLevels(new Float32Array([1, 0]))
+    expect(transient.rmsDb).toBeCloseTo(-3.0103, 3)
+    expect(transient.peakDb).toBe(0)
+
+    const silence = calculateAudioMeterLevels(new Float32Array(32))
+    expect(silence.rmsDb).toBe(AUDIO_METER_FLOOR_DB)
+    expect(silence.peakDb).toBe(AUDIO_METER_FLOOR_DB)
   })
 
   it('exposes auto validation as an explicit pressed-state toggle', async () => {

@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue'
+import { onBeforeUnmount, reactive, ref } from 'vue'
+import AudioLevelMeter from './AudioLevelMeter.vue'
+import {
+  AUDIO_METER_FLOOR_DB,
+  calculateAudioMeterLevels,
+} from '../services/audioMeter'
 
 const props = defineProps<{
   originalUrl: string
@@ -12,8 +17,20 @@ interface AnalysisNode {
   analyser: AnalyserNode
   source: MediaElementAudioSourceNode
   timeData: Uint8Array<ArrayBuffer>
+  meterData: Float32Array<ArrayBuffer>
   frequencyData: Uint8Array<ArrayBuffer>
 }
+
+interface LevelMeterState {
+  rmsDb: number
+  peakDb: number
+  holdUntil: number
+  updatedAt: number
+}
+
+const PEAK_HOLD_MILLISECONDS = 900
+const PEAK_RELEASE_DB_PER_SECOND = 18
+const RMS_RELEASE_DB_PER_SECOND = 15
 
 const original = ref<HTMLAudioElement | null>(null)
 const rendered = ref<HTMLAudioElement | null>(null)
@@ -24,14 +41,37 @@ const renderedSpectrum = ref<HTMLCanvasElement | null>(null)
 const activeSource = ref<AudioSource | null>(null)
 const loopPlayback = ref(false)
 const analysisError = ref<string | null>(null)
+const originalMeter = reactive(createLevelMeterState())
+const renderedMeter = reactive(createLevelMeterState())
 
 let audioContext: AudioContext | null = null
 let originalAnalysis: AnalysisNode | null = null
 let renderedAnalysis: AnalysisNode | null = null
 let animationFrame: number | null = null
 
+function createLevelMeterState(): LevelMeterState {
+  return {
+    rmsDb: AUDIO_METER_FLOOR_DB,
+    peakDb: AUDIO_METER_FLOOR_DB,
+    holdUntil: 0,
+    updatedAt: 0,
+  }
+}
+
 function audioElement(target: AudioSource): HTMLAudioElement | null {
   return target === 'original' ? original.value : rendered.value
+}
+
+function levelMeter(target: AudioSource): LevelMeterState {
+  return target === 'original' ? originalMeter : renderedMeter
+}
+
+function resetLevelMeter(target: AudioSource) {
+  const meter = levelMeter(target)
+  meter.rmsDb = AUDIO_METER_FLOOR_DB
+  meter.peakDb = AUDIO_METER_FLOOR_DB
+  meter.holdUntil = 0
+  meter.updatedAt = 0
 }
 
 function createAnalysisNode(element: HTMLAudioElement): AnalysisNode {
@@ -52,6 +92,7 @@ function createAnalysisNode(element: HTMLAudioElement): AnalysisNode {
     analyser,
     source,
     timeData: new Uint8Array(analyser.fftSize),
+    meterData: new Float32Array(analyser.fftSize),
     frequencyData: new Uint8Array(analyser.frequencyBinCount),
   }
 }
@@ -149,14 +190,52 @@ function drawSpectrum(node: AnalysisNode, canvas: HTMLCanvasElement | null) {
   }
 }
 
-function drawVisualizers() {
+function updateLevelMeter(
+  node: AnalysisNode,
+  meter: LevelMeterState,
+  timestamp: number,
+) {
+  node.analyser.getFloatTimeDomainData(node.meterData)
+  const levels = calculateAudioMeterLevels(node.meterData)
+  const elapsedSeconds =
+    meter.updatedAt === 0
+      ? 0
+      : Math.max(0, timestamp - meter.updatedAt) / 1_000
+
+  meter.rmsDb =
+    meter.updatedAt === 0 || levels.rmsDb >= meter.rmsDb
+      ? levels.rmsDb
+      : Math.max(
+          levels.rmsDb,
+          meter.rmsDb - RMS_RELEASE_DB_PER_SECOND * elapsedSeconds,
+        )
+
+  if (meter.updatedAt === 0 || levels.peakDb >= meter.peakDb) {
+    meter.peakDb = levels.peakDb
+    meter.holdUntil = timestamp + PEAK_HOLD_MILLISECONDS
+  } else if (timestamp > meter.holdUntil) {
+    meter.peakDb = Math.max(
+      levels.peakDb,
+      meter.peakDb - PEAK_RELEASE_DB_PER_SECOND * elapsedSeconds,
+    )
+  }
+  meter.updatedAt = timestamp
+}
+
+function drawVisualizers(timestamp = 0) {
   if (originalAnalysis) {
     drawAmplitude(originalAnalysis, originalAmplitude.value)
     drawSpectrum(originalAnalysis, originalSpectrum.value)
+    if (original.value && !original.value.paused) {
+      updateLevelMeter(originalAnalysis, originalMeter, timestamp)
+    }
   }
   if (renderedAnalysis) {
     drawAmplitude(renderedAnalysis, renderedAmplitude.value)
     drawSpectrum(renderedAnalysis, renderedSpectrum.value)
+    if (rendered.value && !rendered.value.paused) {
+      updateLevelMeter(renderedAnalysis, renderedMeter, timestamp)
+    }
   }
   animationFrame = window.requestAnimationFrame(drawVisualizers)
 }
@@ -208,6 +287,8 @@ function pauseBoth() {
   original.value?.pause()
   rendered.value?.pause()
   activeSource.value = null
+  resetLevelMeter('original')
+  resetLevelMeter('rendered')
 }
 
 function handleNativePlay(target: AudioSource) {
@@ -217,6 +298,7 @@ function handleNativePlay(target: AudioSource) {
 
 function clearSource(target: AudioSource) {
   if (activeSource.value === target) activeSource.value = null
+  resetLevelMeter(target)
 }
 
 onBeforeUnmount(() => {
@@ -279,21 +361,28 @@ onBeforeUnmount(() => {
           <span>A &middot; Original</span>
           <span>{{ activeSource === 'original' ? 'Playing' : 'Ready' }}</span>
         </header>
-        <div class="audio-visualizer-stack">
-          <label>
-            <span>Amplitude</span>
-            <canvas
-              ref="originalAmplitude"
-              aria-label="Original audio amplitude waveform"
-            />
-          </label>
-          <label>
-            <span>Spectrum</span>
-            <canvas
-              ref="originalSpectrum"
-              aria-label="Original audio frequency spectrum"
-            />
-          </label>
+        <div class="audio-analysis-layout meter-leading">
+          <AudioLevelMeter
+            label="Original audio"
+            :rms-db="originalMeter.rmsDb"
+            :peak-db="originalMeter.peakDb"
+          />
+          <div class="audio-visualizer-stack">
+            <label>
+              <span>Amplitude</span>
+              <canvas
+                ref="originalAmplitude"
+                aria-label="Original audio amplitude waveform"
+              />
+            </label>
+            <label>
+              <span>Spectrum</span>
+              <canvas
+                ref="originalSpectrum"
+                aria-label="Original audio frequency spectrum"
+              />
+            </label>
+          </div>
         </div>
         <audio
           ref="original"
@@ -315,21 +404,28 @@ onBeforeUnmount(() => {
           <span>B &middot; Rendered</span>
           <span>{{ activeSource === 'rendered' ? 'Playing' : 'Ready' }}</span>
         </header>
-        <div class="audio-visualizer-stack">
-          <label>
-            <span>Amplitude</span>
-            <canvas
-              ref="renderedAmplitude"
-              aria-label="Rendered audio amplitude waveform"
-            />
-          </label>
-          <label>
-            <span>Spectrum</span>
-            <canvas
-              ref="renderedSpectrum"
-              aria-label="Rendered audio frequency spectrum"
-            />
-          </label>
+        <div class="audio-analysis-layout meter-trailing">
+          <div class="audio-visualizer-stack">
+            <label>
+              <span>Amplitude</span>
+              <canvas
+                ref="renderedAmplitude"
+                aria-label="Rendered audio amplitude waveform"
+              />
+            </label>
+            <label>
+              <span>Spectrum</span>
+              <canvas
+                ref="renderedSpectrum"
+                aria-label="Rendered audio frequency spectrum"
+              />
+            </label>
+          </div>
+          <AudioLevelMeter
+            label="Rendered audio"
+            :rms-db="renderedMeter.rmsDb"
+            :peak-db="renderedMeter.peakDb"
+          />
         </div>
         <audio
           ref="rendered"
