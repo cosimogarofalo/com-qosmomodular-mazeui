@@ -1430,12 +1430,14 @@ select:focus-visible,
   min-height: 0;
 }
 
-.audio-meter-channel.toward-scale-from-left {
-  transform: translateX(2px);
+.audio-meter-channel.toward-scale-from-left .audio-meter-channel-label {
+  padding-right: 1px;
+  text-align: right;
 }
 
-.audio-meter-channel.toward-scale-from-right {
-  transform: translateX(-2px);
+.audio-meter-channel.toward-scale-from-right .audio-meter-channel-label {
+  padding-left: 1px;
+  text-align: left;
 }
 
 .audio-meter-channel-label {
@@ -1452,6 +1454,10 @@ select:focus-visible,
   font: 7px/1 "JetBrains Mono", monospace;
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+.audio-meter-body.is-stereo .audio-meter-scale {
+  text-align: center;
 }
 
 .audio-meter-track {
