@@ -9,6 +9,8 @@ import {
 const props = defineProps<{
   originalUrl: string
   renderedUrl: string
+  originalChannels: number
+  renderedChannels: number
 }>()
 
 type AudioSource = 'original' | 'rendered'
@@ -16,8 +18,13 @@ type AudioSource = 'original' | 'rendered'
 interface AnalysisNode {
   analyser: AnalyserNode
   source: MediaElementAudioSourceNode
+  splitter: ChannelSplitterNode
+  meterSink: GainNode
+  meterChannels: {
+    analyser: AnalyserNode
+    data: Float32Array<ArrayBuffer>
+  }[]
   timeData: Uint8Array<ArrayBuffer>
-  meterData: Float32Array<ArrayBuffer>
   frequencyData: Uint8Array<ArrayBuffer>
 }
 
@@ -41,8 +48,14 @@ const renderedSpectrum = ref<HTMLCanvasElement | null>(null)
 const activeSource = ref<AudioSource | null>(null)
 const loopPlayback = ref(false)
 const analysisError = ref<string | null>(null)
-const originalMeter = reactive(createLevelMeterState())
-const renderedMeter = reactive(createLevelMeterState())
+const originalMeters = reactive([
+  createLevelMeterState(),
+  createLevelMeterState(),
+])
+const renderedMeters = reactive([
+  createLevelMeterState(),
+  createLevelMeterState(),
+])
 
 let audioContext: AudioContext | null = null
 let originalAnalysis: AnalysisNode | null = null
@@ -62,16 +75,27 @@ function audioElement(target: AudioSource): HTMLAudioElement | null {
   return target === 'original' ? original.value : rendered.value
 }
 
-function levelMeter(target: AudioSource): LevelMeterState {
-  return target === 'original' ? originalMeter : renderedMeter
+function channelCount(value: number): number {
+  return value === 2 ? 2 : 1
+}
+
+function meterChannels(target: AudioSource): number {
+  return channelCount(
+    target === 'original' ? props.originalChannels : props.renderedChannels,
+  )
+}
+
+function levelMeters(target: AudioSource): LevelMeterState[] {
+  return target === 'original' ? originalMeters : renderedMeters
 }
 
 function resetLevelMeter(target: AudioSource) {
-  const meter = levelMeter(target)
-  meter.rmsDb = AUDIO_METER_FLOOR_DB
-  meter.peakDb = AUDIO_METER_FLOOR_DB
-  meter.holdUntil = 0
-  meter.updatedAt = 0
+  for (const meter of levelMeters(target)) {
+    meter.rmsDb = AUDIO_METER_FLOOR_DB
+    meter.peakDb = AUDIO_METER_FLOOR_DB
+    meter.holdUntil = 0
+    meter.updatedAt = 0
+  }
 }
 
 function createAnalysisNode(element: HTMLAudioElement): AnalysisNode {
@@ -88,11 +112,29 @@ function createAnalysisNode(element: HTMLAudioElement): AnalysisNode {
   source.connect(analyser)
   analyser.connect(audioContext.destination)
 
+  const splitter = audioContext.createChannelSplitter(2)
+  const meterSink = audioContext.createGain()
+  meterSink.gain.value = 0
+  const meterChannels = Array.from({ length: 2 }, (_, channel) => {
+    const channelAnalyser = audioContext!.createAnalyser()
+    channelAnalyser.fftSize = 2048
+    splitter.connect(channelAnalyser, channel, 0)
+    channelAnalyser.connect(meterSink)
+    return {
+      analyser: channelAnalyser,
+      data: new Float32Array(channelAnalyser.fftSize),
+    }
+  })
+  source.connect(splitter)
+  meterSink.connect(audioContext.destination)
+
   return {
     analyser,
     source,
+    splitter,
+    meterSink,
+    meterChannels,
     timeData: new Uint8Array(analyser.fftSize),
-    meterData: new Float32Array(analyser.fftSize),
     frequencyData: new Uint8Array(analyser.frequencyBinCount),
   }
 }
@@ -191,12 +233,12 @@ function drawSpectrum(node: AnalysisNode, canvas: HTMLCanvasElement | null) {
 }
 
 function updateLevelMeter(
-  node: AnalysisNode,
+  channel: AnalysisNode['meterChannels'][number],
   meter: LevelMeterState,
   timestamp: number,
 ) {
-  node.analyser.getFloatTimeDomainData(node.meterData)
-  const levels = calculateAudioMeterLevels(node.meterData)
+  channel.analyser.getFloatTimeDomainData(channel.data)
+  const levels = calculateAudioMeterLevels(channel.data)
   const elapsedSeconds =
     meter.updatedAt === 0
       ? 0
@@ -222,19 +264,30 @@ function updateLevelMeter(
   meter.updatedAt = timestamp
 }
 
+function updateLevelMeters(
+  target: AudioSource,
+  node: AnalysisNode,
+  timestamp: number,
+) {
+  const meters = levelMeters(target)
+  for (let channel = 0; channel < meterChannels(target); channel += 1) {
+    updateLevelMeter(node.meterChannels[channel]!, meters[channel]!, timestamp)
+  }
+}
+
 function drawVisualizers(timestamp = 0) {
   if (originalAnalysis) {
     drawAmplitude(originalAnalysis, originalAmplitude.value)
     drawSpectrum(originalAnalysis, originalSpectrum.value)
     if (original.value && !original.value.paused) {
-      updateLevelMeter(originalAnalysis, originalMeter, timestamp)
+      updateLevelMeters('original', originalAnalysis, timestamp)
     }
   }
   if (renderedAnalysis) {
     drawAmplitude(renderedAnalysis, renderedAmplitude.value)
     drawSpectrum(renderedAnalysis, renderedSpectrum.value)
     if (rendered.value && !rendered.value.paused) {
-      updateLevelMeter(renderedAnalysis, renderedMeter, timestamp)
+      updateLevelMeters('rendered', renderedAnalysis, timestamp)
     }
   }
   animationFrame = window.requestAnimationFrame(drawVisualizers)
@@ -307,8 +360,18 @@ onBeforeUnmount(() => {
     animationFrame = null
   }
   originalAnalysis?.source.disconnect()
+  originalAnalysis?.splitter.disconnect()
+  originalAnalysis?.meterChannels.forEach((channel) =>
+    channel.analyser.disconnect(),
+  )
+  originalAnalysis?.meterSink.disconnect()
   originalAnalysis?.analyser.disconnect()
   renderedAnalysis?.source.disconnect()
+  renderedAnalysis?.splitter.disconnect()
+  renderedAnalysis?.meterChannels.forEach((channel) =>
+    channel.analyser.disconnect(),
+  )
+  renderedAnalysis?.meterSink.disconnect()
   renderedAnalysis?.analyser.disconnect()
   originalAnalysis = null
   renderedAnalysis = null
@@ -361,11 +424,14 @@ onBeforeUnmount(() => {
           <span>A &middot; Original</span>
           <span>{{ activeSource === 'original' ? 'Playing' : 'Ready' }}</span>
         </header>
-        <div class="audio-analysis-layout meter-leading">
+        <div
+          class="audio-analysis-layout meter-leading"
+          :class="{ 'stereo-meter': channelCount(originalChannels) === 2 }"
+        >
           <AudioLevelMeter
             label="Original audio"
-            :rms-db="originalMeter.rmsDb"
-            :peak-db="originalMeter.peakDb"
+            :levels="originalMeters.slice(0, channelCount(originalChannels))"
+            position="leading"
           />
           <div class="audio-visualizer-stack">
             <label>
@@ -404,7 +470,10 @@ onBeforeUnmount(() => {
           <span>B &middot; Rendered</span>
           <span>{{ activeSource === 'rendered' ? 'Playing' : 'Ready' }}</span>
         </header>
-        <div class="audio-analysis-layout meter-trailing">
+        <div
+          class="audio-analysis-layout meter-trailing"
+          :class="{ 'stereo-meter': channelCount(renderedChannels) === 2 }"
+        >
           <div class="audio-visualizer-stack">
             <label>
               <span>Amplitude</span>
@@ -423,8 +492,8 @@ onBeforeUnmount(() => {
           </div>
           <AudioLevelMeter
             label="Rendered audio"
-            :rms-db="renderedMeter.rmsDb"
-            :peak-db="renderedMeter.peakDb"
+            :levels="renderedMeters.slice(0, channelCount(renderedChannels))"
+            position="trailing"
           />
         </div>
         <audio

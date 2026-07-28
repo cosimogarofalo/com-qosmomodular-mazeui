@@ -180,6 +180,8 @@ describe('critical workflow components', () => {
       props: {
         originalUrl: '/api/audio/inputs/input/content',
         renderedUrl: '/api/jobs/job/outputs/0/content',
+        originalChannels: 1,
+        renderedChannels: 1,
       },
     })
     const buttons = wrapper.findAll('.ab-actions button')
@@ -205,6 +207,8 @@ describe('critical workflow components', () => {
       props: {
         originalUrl: '/api/audio/inputs/input/content',
         renderedUrl: '/api/jobs/job/outputs/0/content',
+        originalChannels: 1,
+        renderedChannels: 1,
       },
     })
     const loopButton = wrapper.find('.loop-playback-button')
@@ -227,6 +231,8 @@ describe('critical workflow components', () => {
       props: {
         originalUrl: '/api/audio/inputs/input/content',
         renderedUrl: '/api/jobs/job/outputs/0/content',
+        originalChannels: 2,
+        renderedChannels: 2,
       },
     })
     const cards = wrapper.findAll('.audio-source-card')
@@ -252,6 +258,21 @@ describe('critical workflow components', () => {
     expect(
       wrapper.find('[aria-label="Rendered audio RMS and peak meter"]').exists(),
     ).toBe(true)
+    expect(cards[0]?.findAll('[role="meter"]')).toHaveLength(2)
+    expect(cards[0]?.find('[aria-label="Original audio L channel"]').exists()).toBe(
+      true,
+    )
+    expect(
+      cards[0]
+        ?.find('[aria-label="Original audio R channel"]')
+        .element.parentElement?.classList,
+    ).toContain('toward-scale-from-right')
+    expect(cards[1]?.findAll('[role="meter"]')).toHaveLength(2)
+    expect(
+      cards[1]
+        ?.find('[aria-label="Rendered audio L channel"]')
+        .element.parentElement?.classList,
+    ).toContain('toward-scale-from-left')
 
     const analysisLayouts = wrapper.findAll('.audio-analysis-layout')
     expect(analysisLayouts[0]?.element.firstElementChild?.classList).toContain(

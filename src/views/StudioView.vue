@@ -167,7 +167,13 @@ async function validateDraft() {
 
 async function renderDraft() {
   if (!canRender.value) return
-  await workflow.render(chain.request, chain.revision, originalUrl.value)
+  await workflow.render(
+    chain.request,
+    chain.revision,
+    originalUrl.value,
+    selectedInput.value?.channels || 1,
+    topology.value.output === 'STEREO' ? 2 : 1,
+  )
 }
 
 function selectInput(inputId: string) {
@@ -350,6 +356,8 @@ function rememberDockRatio() {
           :selected-effect="chain.selectedEffect"
           :selected-processor="selectedProcessor"
           :sample-rate="selectedInput?.sampleRate"
+          :original-channels="workflow.originalChannels"
+          :rendered-channels="workflow.renderedChannels"
           @validate="validateDraft"
           @delete-job="workflow.deleteCurrentJob"
           @clear-job="workflow.clearJob"

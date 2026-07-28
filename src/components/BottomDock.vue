@@ -28,6 +28,8 @@ const props = defineProps<{
   selectedEffect?: ChainEffectDraft
   selectedProcessor?: Processor
   sampleRate?: number
+  originalChannels?: number
+  renderedChannels?: number
 }>()
 
 defineEmits<{
@@ -252,6 +254,8 @@ function bytes(value: number | null): string {
           v-if="selectedOutput && originalUrl"
           :original-url="originalUrl"
           :rendered-url="mazeApi.mediaUrl(selectedOutput.contentUrl)"
+          :original-channels="originalChannels || 1"
+          :rendered-channels="renderedChannels || 1"
         />
       </template>
     </div>

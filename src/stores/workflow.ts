@@ -30,6 +30,8 @@ export const useWorkflowStore = defineStore('workflow', {
     jobLogs: [] as string[],
     outputs: [] as JobOutput[],
     originalUrl: '',
+    originalChannels: 1,
+    renderedChannels: 1,
     jobError: null as string | null,
     polling: false,
     deleting: false,
@@ -85,6 +87,8 @@ export const useWorkflowStore = defineStore('workflow', {
       request: BoundChainRequest,
       revision: number,
       originalUrl: string,
+      originalChannels: number,
+      renderedChannels: number,
     ): Promise<boolean> {
       this.stopPolling()
       this.submitting = true
@@ -106,6 +110,8 @@ export const useWorkflowStore = defineStore('workflow', {
           error: null,
         }
         this.originalUrl = originalUrl
+        this.originalChannels = originalChannels === 2 ? 2 : 1
+        this.renderedChannels = renderedChannels === 2 ? 2 : 1
         void this.pollJob(submitted.jobId)
         return true
       } catch (error) {
@@ -201,6 +207,8 @@ export const useWorkflowStore = defineStore('workflow', {
       this.jobLogs = []
       this.outputs = []
       this.originalUrl = ''
+      this.originalChannels = 1
+      this.renderedChannels = 1
       this.jobError = null
     },
   },

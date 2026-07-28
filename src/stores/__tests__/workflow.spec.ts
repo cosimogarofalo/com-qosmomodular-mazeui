@@ -130,12 +130,14 @@ describe('render workflow store', () => {
     const poll = vi.spyOn(store, 'pollJob').mockResolvedValue()
 
     await expect(
-      store.render(request, 8, '/api/audio/inputs/input/content'),
+      store.render(request, 8, '/api/audio/inputs/input/content', 2, 2),
     ).resolves.toBe(true)
 
     expect(mazeApi.renderChain).toHaveBeenCalledWith(request)
     expect(store.job?.status).toBe('queued')
     expect(store.originalUrl).toBe('/api/audio/inputs/input/content')
+    expect(store.originalChannels).toBe(2)
+    expect(store.renderedChannels).toBe(2)
     expect(poll).toHaveBeenCalledWith('job-1')
   })
 
