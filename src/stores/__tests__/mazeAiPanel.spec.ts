@@ -49,6 +49,11 @@ describe('MazeAI proposal panel', () => {
       toneProcessor.id,
     ])
     expect(wrapper.text()).toContain('Anteprima in sola lettura')
+    expect(wrapper.text()).toContain('false-start')
+    expect(wrapper.text()).toContain('ASR locale pronto')
+    expect(wrapper.text()).toContain('[0, 691200)')
+    expect(wrapper.text()).toContain('14.40 s')
+    expect(wrapper.find('.mazeai-proposal-region.is-destructive').exists()).toBe(true)
 
     await wrapper.get('.mazeai-accept-button').trigger('click')
 

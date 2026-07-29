@@ -21,6 +21,12 @@ const contentHints = computed<MazeAiContentHint[]>(
 const semanticEdits = computed<MazeAiSemanticEdit[]>(
   () => mazeAi.capabilities?.semanticEditModes ?? ['KEEP', 'ATTENUATE', 'REMOVE'],
 )
+const automaticTranscript = computed(
+  () =>
+    mazeAi.capabilities?.transcriptCapabilities.includes(
+      'AUTOMATIC_WORD_TIMESTAMPS',
+    ) ?? false,
+)
 const proposalIssues = computed(() => {
   if (!mazeAi.result || !selectedInput.value) return []
   return proposalCompatibilityIssues(
@@ -52,10 +58,14 @@ const canAccept = computed(
 const progress = computed(() =>
   Math.min(100, Math.max(0, mazeAi.job?.progressPercent ?? 0)),
 )
+const regionalAnalyses = computed(() => mazeAi.result?.analysis.regional ?? [])
 const analysisRegions = computed(() =>
-  (mazeAi.result?.analysis.regional ?? []).flatMap((analysis) =>
+  regionalAnalyses.value.flatMap((analysis) =>
     analysis.regions.map((region) => ({ ...region, analyzer: analysis.analyzer })),
   ),
+)
+const unavailableRegionalAnalyses = computed(() =>
+  regionalAnalyses.value.filter((analysis) => analysis.status !== 'COMPLETE'),
 )
 
 async function reconnect() {
@@ -76,6 +86,11 @@ function acceptProposal() {
 
 function confidence(value: number | undefined) {
   return value === undefined ? '—' : `${Math.round(value * 100)}%`
+}
+
+function regionSeconds(frame: number) {
+  const sampleRate = mazeAi.result?.source.sampleRate ?? 0
+  return sampleRate > 0 ? `${(frame / sampleRate).toFixed(2)} s` : '—'
 }
 </script>
 
@@ -110,6 +125,7 @@ function confidence(value: number | undefined) {
       <span>Maze {{ maze.health?.version ?? '—' }}</span>
       <span>MazeAI {{ mazeAi.health?.version ?? '—' }}</span>
       <span>Schema {{ mazeAi.health?.schemaVersion ?? '—' }}</span>
+      <span>ASR locale {{ automaticTranscript ? 'pronto' : 'non disponibile' }}</span>
     </div>
 
     <div v-if="mazeAi.compatibility.length" class="mazeai-alert is-error">
@@ -235,6 +251,16 @@ function confidence(value: number | undefined) {
             </dd>
           </div>
           <div>
+            <dt>Supporto speech audio</dt>
+            <dd>
+              {{
+                confidence(
+                  mazeAi.result.analysis.contentClassification.evidence.audioSpeechSupport,
+                )
+              }}
+            </dd>
+          </div>
+          <div>
             <dt>Evidenze globali</dt>
             <dd>{{ mazeAi.result.analysis.global.length }}</dd>
           </div>
@@ -243,16 +269,38 @@ function confidence(value: number | undefined) {
             <dd>{{ analysisRegions.length }}</dd>
           </div>
         </dl>
-        <ul v-if="analysisRegions.length" class="mazeai-region-list">
-          <li
-            v-for="region in analysisRegions.slice(0, 6)"
-            :key="`${region.analyzer}-${region.label}-${region.startFrame}-${region.endFrame}`"
+        <div class="mazeai-regional-analyses">
+          <section
+            v-for="analysis in regionalAnalyses"
+            :key="analysis.analyzer"
+            class="mazeai-regional-analysis"
+            :class="`is-${analysis.status.toLowerCase()}`"
           >
-            <strong>{{ region.label }}</strong>
-            <span>[{{ region.startFrame }}, {{ region.endFrame }})</span>
-            <small>{{ region.analyzer }}</small>
-          </li>
-        </ul>
+            <header>
+              <strong>{{ analysis.analyzer }}</strong>
+              <span>{{ analysis.status }}</span>
+              <small>{{ analysis.regions.length }} regioni</small>
+            </header>
+            <p>{{ analysis.summary }}</p>
+            <details v-if="analysis.regions.length">
+              <summary>Mostra tutte le regioni</summary>
+              <ul class="mazeai-region-list">
+                <li
+                  v-for="region in analysis.regions"
+                  :key="`${analysis.analyzer}-${region.label}-${region.startFrame}-${region.endFrame}`"
+                >
+                  <strong>{{ region.label }}</strong>
+                  <span>[{{ region.startFrame }}, {{ region.endFrame }})</span>
+                  <small>
+                    {{ regionSeconds(region.startFrame) }} →
+                    {{ regionSeconds(region.endFrame) }} ·
+                    {{ confidence(region.confidence) }}
+                  </small>
+                </li>
+              </ul>
+            </details>
+          </section>
+        </div>
       </article>
 
       <article class="mazeai-result-card">
@@ -263,12 +311,22 @@ function confidence(value: number | undefined) {
             <p>Messaggi diagnostici separati dalla proposta.</p>
           </div>
         </header>
-        <ul v-if="mazeAi.result.warnings.length" class="mazeai-warning-list">
+        <ul
+          v-if="mazeAi.result.warnings.length || unavailableRegionalAnalyses.length"
+          class="mazeai-warning-list"
+        >
           <li
             v-for="warning in mazeAi.result.warnings"
             :key="warning"
           >
             <span>{{ warning }}</span>
+          </li>
+          <li
+            v-for="analysis in unavailableRegionalAnalyses"
+            :key="`regional-${analysis.analyzer}`"
+          >
+            <strong>{{ analysis.analyzer }} · {{ analysis.status }}</strong>
+            <span>{{ analysis.summary }}</span>
           </li>
         </ul>
         <p v-else class="mazeai-empty-copy">Nessun avviso.</p>
@@ -315,6 +373,44 @@ function confidence(value: number | undefined) {
                 regioni
               </span>
             </div>
+            <details class="mazeai-effect-details">
+              <summary>Mostra parametri e regioni</summary>
+              <ul class="mazeai-parameter-list">
+                <li
+                  v-for="parameter in effect.params"
+                  :key="parameter.name"
+                >
+                  <div>
+                    <code>{{ parameter.name }}</code>
+                    <span>{{ parameter.value }}</span>
+                  </div>
+                  <div
+                    v-if="parameter.regions.length"
+                    class="mazeai-parameter-regions"
+                  >
+                    <div
+                      v-for="region in parameter.regions"
+                      :key="`${region.startFrame}-${region.endFrame}-${region.value}`"
+                      class="mazeai-proposal-region"
+                      :class="{
+                        'is-destructive':
+                          region.value === 'REMOVE' || region.value === 'ATTENUATE',
+                      }"
+                    >
+                      <strong>{{ region.value }}</strong>
+                      <span>[{{ region.startFrame }}, {{ region.endFrame }})</span>
+                      <small>
+                        {{ regionSeconds(region.startFrame) }} →
+                        {{ regionSeconds(region.endFrame) }}
+                        <template v-if="region.confidence !== null">
+                          · {{ confidence(region.confidence) }}
+                        </template>
+                      </small>
+                    </div>
+                  </div>
+                </li>
+              </ul>
+            </details>
           </div>
 
           <div v-if="proposalIssues.length" class="mazeai-alert is-error">

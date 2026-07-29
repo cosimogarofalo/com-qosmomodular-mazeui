@@ -1349,6 +1349,67 @@ select:focus-visible,
   list-style: none;
 }
 
+.mazeai-regional-analyses {
+  display: grid;
+  gap: 6px;
+}
+
+.mazeai-regional-analysis {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #203149;
+  border-radius: 6px;
+  padding: 7px;
+  background: #09111b;
+}
+
+.mazeai-regional-analysis > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 7px;
+  align-items: center;
+}
+
+.mazeai-regional-analysis > header strong {
+  color: #b9cce2;
+  font-size: 8px;
+}
+
+.mazeai-regional-analysis > header span {
+  color: var(--green);
+  font-size: 7px;
+  font-weight: 700;
+}
+
+.mazeai-regional-analysis > header small {
+  color: #68809c;
+  font: 7px "JetBrains Mono", Consolas, monospace;
+}
+
+.mazeai-regional-analysis > p {
+  margin: 0;
+  color: #72869e;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.mazeai-regional-analysis.is-skipped > header span,
+.mazeai-regional-analysis.is-not_applicable > header span {
+  color: var(--amber);
+}
+
+.mazeai-regional-analysis details {
+  border-top: 1px solid #1b2b40;
+  padding-top: 5px;
+}
+
+.mazeai-regional-analysis summary,
+.mazeai-effect-details summary {
+  color: #78a9e8;
+  font-size: 8px;
+  cursor: pointer;
+}
+
 .mazeai-region-list li,
 .mazeai-warning-list li {
   display: grid;
@@ -1375,6 +1436,10 @@ select:focus-visible,
   border: 1px solid rgb(232 183 79 / 20%);
   color: #d7b96f;
   background: rgb(83 62 19 / 14%);
+}
+
+.mazeai-warning-list strong {
+  font-size: 8px;
 }
 
 .mazeai-result-card details {
@@ -1433,6 +1498,88 @@ select:focus-visible,
   color: var(--muted);
   font-size: 8px;
   line-height: 1.35;
+}
+
+.mazeai-effect-details {
+  grid-column: 2 / -1;
+  min-width: 0;
+  border-top: 1px solid #1d2d43;
+  padding-top: 6px;
+}
+
+.mazeai-parameter-list {
+  display: grid;
+  gap: 4px;
+  margin: 7px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mazeai-parameter-list > li {
+  display: grid;
+  gap: 5px;
+  border-radius: 5px;
+  padding: 5px 6px;
+  background: #070e17;
+}
+
+.mazeai-parameter-list > li > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mazeai-parameter-list code {
+  color: #7e9abb;
+  font-size: 7px;
+}
+
+.mazeai-parameter-list > li > div:first-child > span {
+  overflow: hidden;
+  color: #c1d1e3;
+  font: 7px "JetBrains Mono", Consolas, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mazeai-parameter-regions {
+  display: grid;
+  gap: 4px;
+}
+
+.mazeai-proposal-region {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+  border: 1px solid #29405e;
+  border-radius: 4px;
+  padding: 5px 6px;
+  color: #9ab0c9;
+  background: #0c1724;
+  font-size: 7px;
+}
+
+.mazeai-proposal-region strong {
+  color: #9ac1f5;
+}
+
+.mazeai-proposal-region span {
+  font-family: "JetBrains Mono", Consolas, monospace;
+}
+
+.mazeai-proposal-region small {
+  color: #7189a5;
+  text-align: right;
+}
+
+.mazeai-proposal-region.is-destructive {
+  border-color: rgb(224 99 109 / 38%);
+  background: rgb(92 27 38 / 20%);
+}
+
+.mazeai-proposal-region.is-destructive strong {
+  color: #ef969e;
 }
 
 .mazeai-effect-counts {

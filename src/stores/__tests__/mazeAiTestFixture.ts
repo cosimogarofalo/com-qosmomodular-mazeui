@@ -101,6 +101,10 @@ export const mazeAiCapabilities: MazeAiCapabilitiesResponse = {
   contentHints: ['AUTO', 'SPEECH', 'MUSIC', 'MIXED', 'UNKNOWN'],
   semanticEditModes: ['KEEP', 'ATTENUATE', 'REMOVE'],
   analyzers: ['content-type', 'false-start'],
-  transcriptCapabilities: ['SOURCE_BOUND_TIMED'],
+  transcriptCapabilities: [
+    'SOURCE_BOUND_TIMED',
+    'AUTOMATIC_WORD_TIMESTAMPS',
+    'LOCAL_WHISPER_CPP',
+  ],
   processorCatalogFingerprint: mazeAiResult.processorCatalogFingerprint,
 }
