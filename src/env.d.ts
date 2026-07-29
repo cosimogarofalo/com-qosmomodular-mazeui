@@ -5,6 +5,8 @@ declare const __MAZE_UI_VERSION__: string
 interface ImportMetaEnv {
   readonly VITE_MAZE_API_URL?: string
   readonly VITE_MAZE_PROXY_TARGET?: string
+  readonly VITE_MAZEAI_API_URL?: string
+  readonly VITE_MAZEAI_PROXY_TARGET?: string
 }
 
 interface ImportMeta {

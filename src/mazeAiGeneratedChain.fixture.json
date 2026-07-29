@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "mazeAiVersion": "0.8.0",
+  "source": {
+    "inputId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "fileName": "podcast.wav",
+    "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "sampleRate": 48000,
+    "channels": 2,
+    "totalFrames": 1204280,
+    "durationMs": 25089
+  },
+  "processorCatalogFingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "analysis": {
+    "contentClassification": {
+      "classifier": "content-type",
+      "type": "SPEECH",
+      "confidence": 0.98,
+      "routing": "AUTOMATIC",
+      "probabilities": {
+        "SPEECH": 0.82,
+        "MUSIC": 0.05,
+        "MIXED": 0.08,
+        "UNKNOWN": 0.05
+      },
+      "evidence": {
+        "audioSpeechSupport": 0.92,
+        "transcriptCorroboration": 0.88
+      },
+      "summary": "Source-bound transcript corroborated by audio speech evidence"
+    },
+    "global": [
+      {
+        "analyzer": "transcript-evidence",
+        "status": "COMPLETE",
+        "metrics": {
+          "available": 1.0,
+          "sourceBound": 1.0,
+          "wordCount": 10.0
+        },
+        "summary": "Validated source-bound timed transcript"
+      }
+    ],
+    "regional": [
+      {
+        "analyzer": "false-start",
+        "schemaVersion": 2,
+        "status": "COMPLETE",
+        "grid": {
+          "sampleRate": 48000,
+          "frameSize": 1,
+          "hopSize": 1,
+          "sourceFrames": 1204280
+        },
+        "regions": [
+          {
+            "label": "false-start",
+            "startFrame": 0,
+            "endFrame": 691200,
+            "confidence": 0.96,
+            "metrics": {
+              "matchedWords": 3.0
+            }
+          }
+        ],
+        "metrics": {
+          "available": 1.0,
+          "detectedFalseStarts": 1.0
+        },
+        "summary": "Transcript false-start V2: one restart region"
+      }
+    ]
+  },
+  "proposal": {
+    "chainName": "MazeAI podcast cleanup",
+    "effects": [
+      {
+        "processorId": "PR-VOI-BA-VE-01",
+        "enabled": true,
+        "params": [
+          {
+            "name": "analysisSourceSha256",
+            "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "regions": []
+          },
+          {
+            "name": "analysisSampleRate",
+            "value": "48000",
+            "regions": []
+          },
+          {
+            "name": "analysisChannels",
+            "value": "2",
+            "regions": []
+          },
+          {
+            "name": "analysisTotalFrames",
+            "value": "1204280",
+            "regions": []
+          },
+          {
+            "name": "analysisSchemaVersion",
+            "value": "1",
+            "regions": []
+          },
+          {
+            "name": "falseStartMode",
+            "value": "REMOVE",
+            "regions": []
+          },
+          {
+            "name": "falseStartAction",
+            "value": "KEEP",
+            "regions": [
+              {
+                "startFrame": 0,
+                "endFrame": 691200,
+                "value": "REMOVE",
+                "confidence": 0.96
+              }
+            ]
+          }
+        ],
+        "rationale": "Source-bound voice enhancement first"
+      },
+      {
+        "processorId": "PR-FLT-2K-TO-01",
+        "enabled": true,
+        "params": [
+          {
+            "name": "bass",
+            "value": "1.50",
+            "regions": []
+          },
+          {
+            "name": "treble",
+            "value": "2.00",
+            "regions": []
+          }
+        ],
+        "rationale": "Gentle clarity shaping"
+      }
+    ]
+  },
+  "canonicalYaml": "chains:\n  - name: \"MazeAI podcast cleanup\"\n    flow:\n      inputs:\n        - name: \"browser-input\"\n      effects:\n        - id: PR-VOI-BA-VE-01\n        - id: PR-FLT-2K-TO-01\n      outputs:\n        - name: \"browser-output\"\n",
+  "warnings": [
+    "Review semantic removal before accepting the proposal"
+  ]
+}

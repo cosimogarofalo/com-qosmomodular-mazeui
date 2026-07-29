@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 
 import AudioComparison from '@/components/AudioComparison.vue'
+import MazeAiPanel from '@/components/MazeAiPanel.vue'
 import ProcessorVisualization from '@/components/ProcessorVisualization.vue'
 import { mazeApi } from '@/services/mazeApi'
 import type {
@@ -40,6 +41,7 @@ defineEmits<{
 
 type DockTab =
   | 'overview'
+  | 'mazeai'
   | 'processor'
   | 'yaml'
   | 'validation'
@@ -48,6 +50,7 @@ type DockTab =
 const activeTab = ref<DockTab>('overview')
 const tabs: DockTab[] = [
   'overview',
+  'mazeai',
   'processor',
   'yaml',
   'validation',
@@ -81,7 +84,7 @@ watch(
 watch(
   () => props.validation,
   (validation) => {
-    if (validation && activeTab.value !== 'processor') {
+    if (validation && !['processor', 'mazeai'].includes(activeTab.value)) {
       activeTab.value = 'validation'
     }
   },
@@ -142,6 +145,11 @@ function bytes(value: number | null): string {
         </tbody>
       </table>
     </div>
+
+    <MazeAiPanel
+      v-else-if="activeTab === 'mazeai'"
+      class="dock-content mazeai-content"
+    />
 
     <div v-else-if="activeTab === 'processor'" class="dock-content processor-content">
       <div v-if="!selectedEffect || !selectedProcessor" class="empty-panel">

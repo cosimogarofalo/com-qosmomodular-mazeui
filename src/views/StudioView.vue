@@ -10,11 +10,13 @@ import RenderTransport from '@/components/RenderTransport.vue'
 import { deriveTopology } from '@/services/chainTopology'
 import { mazeApi } from '@/services/mazeApi'
 import { useChainStore } from '@/stores/chain'
+import { useMazeAiStore } from '@/stores/mazeAi'
 import { useMazeStore } from '@/stores/maze'
 import { useWorkflowStore } from '@/stores/workflow'
 import type { OutputFormat, ParameterValue, Processor } from '@/types/maze'
 
 const maze = useMazeStore()
+const mazeAi = useMazeAiStore()
 const chain = useChainStore()
 const workflow = useWorkflowStore()
 const uiVersion = __MAZE_UI_VERSION__
@@ -88,7 +90,7 @@ const canRender = computed(
 )
 
 onMounted(() => {
-  void maze.connect()
+  void connectServices()
   if (centerWorkspace.value && window.ResizeObserver) {
     workspaceObserver = new ResizeObserver(updateDockBounds)
     workspaceObserver.observe(centerWorkspace.value)
@@ -97,6 +99,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   clearAutoValidation()
+  mazeAi.stopPolling()
   workflow.stopPolling()
   workspaceObserver?.disconnect()
   workspaceObserver = null
@@ -110,8 +113,16 @@ watch(
 )
 watch(
   () => maze.status,
-  () => scheduleAutoValidation(),
+  () => {
+    scheduleAutoValidation()
+    mazeAi.reevaluateCompatibility(uiVersion, maze.health?.version)
+  },
 )
+
+async function connectServices() {
+  await maze.connect()
+  await mazeAi.connect(uiVersion, maze.health?.version)
+}
 
 function clearAutoValidation() {
   if (autoValidationTimer === null) return

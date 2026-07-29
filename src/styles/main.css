@@ -982,6 +982,515 @@ select:focus-visible,
   overflow: auto;
 }
 
+.mazeai-content {
+  padding: 14px;
+  background:
+    radial-gradient(circle at 8% 0%, rgb(68 140 255 / 10%), transparent 30%),
+    radial-gradient(circle at 88% 10%, rgb(173 117 239 / 8%), transparent 28%),
+    #090f17;
+}
+
+.mazeai-panel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.mazeai-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.mazeai-header h2,
+.mazeai-result-card h3 {
+  margin: 0;
+  color: #e8f1fc;
+  font-weight: 650;
+}
+
+.mazeai-header h2 {
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.mazeai-header p {
+  max-width: 720px;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.mazeai-header .mazeai-eyebrow {
+  margin: 0 0 3px;
+  color: var(--cyan);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.mazeai-connection,
+.mazeai-actions,
+.mazeai-source-line,
+.mazeai-job-line {
+  display: flex;
+  align-items: center;
+}
+
+.mazeai-connection {
+  gap: 8px;
+}
+
+.mazeai-gate {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: var(--muted);
+  background: rgb(5 10 16 / 56%);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mazeai-gate.is-ready {
+  border-color: rgb(84 201 138 / 48%);
+  color: #83e2ac;
+  background: rgb(84 201 138 / 8%);
+}
+
+.mazeai-gate.is-connecting {
+  border-color: rgb(232 183 79 / 42%);
+  color: var(--amber);
+}
+
+.mazeai-gate.is-offline,
+.mazeai-gate.is-incompatible {
+  border-color: rgb(224 99 109 / 42%);
+  color: #ef8b94;
+}
+
+.mazeai-version-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mazeai-version-strip span {
+  border: 1px solid #1b2b40;
+  border-radius: 4px;
+  padding: 4px 7px;
+  color: #70859f;
+  background: rgb(6 12 20 / 56%);
+  font: 8px "JetBrains Mono", Consolas, monospace;
+}
+
+.mazeai-composer {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(210px, 0.42fr);
+  gap: 10px 14px;
+  border: 1px solid #253752;
+  border-radius: 10px;
+  padding: 12px;
+  background:
+    linear-gradient(105deg, rgb(24 45 74 / 44%), rgb(13 21 32 / 74%)),
+    var(--surface);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 2%);
+}
+
+.mazeai-composer label,
+.mazeai-options,
+.mazeai-options label {
+  display: grid;
+  gap: 5px;
+}
+
+.mazeai-composer label > span,
+.mazeai-source-line > span {
+  color: #8fa3bc;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mazeai-composer textarea,
+.mazeai-composer select {
+  width: 100%;
+  border: 1px solid #2a3c55;
+  border-radius: 6px;
+  color: var(--text);
+  background: #080f18;
+}
+
+.mazeai-composer textarea {
+  min-height: 66px;
+  resize: vertical;
+  padding: 9px 10px;
+  font: 11px/1.45 Inter, sans-serif;
+}
+
+.mazeai-composer select {
+  height: 30px;
+  padding: 0 8px;
+  font-size: 10px;
+}
+
+.mazeai-composer textarea:focus,
+.mazeai-composer select:focus {
+  border-color: #447ac2;
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(68 140 255 / 12%);
+}
+
+.mazeai-options {
+  grid-template-columns: 1fr 1fr;
+  align-content: start;
+}
+
+.mazeai-source-line,
+.mazeai-actions {
+  grid-column: 1 / -1;
+}
+
+.mazeai-source-line {
+  gap: 8px;
+  min-width: 0;
+  border-top: 1px solid rgb(48 67 93 / 50%);
+  padding-top: 9px;
+  font-size: 9px;
+}
+
+.mazeai-source-line strong {
+  overflow: hidden;
+  color: #c7d6e8;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mazeai-source-line small {
+  color: var(--faint);
+  font: 8px "JetBrains Mono", Consolas, monospace;
+}
+
+.mazeai-actions {
+  gap: 8px;
+}
+
+.mazeai-actions .button {
+  min-height: 31px;
+  font-size: 9px;
+}
+
+.button-danger {
+  border-color: rgb(224 99 109 / 54%);
+  color: #f0969e;
+  background: rgb(102 31 42 / 36%);
+}
+
+.button-danger:hover:not(:disabled) {
+  background: rgb(130 38 51 / 48%);
+}
+
+.mazeai-blocker {
+  overflow: hidden;
+  color: #8b9db4;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mazeai-job {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #233751;
+  border-radius: 7px;
+  padding: 9px 11px;
+  background: #0b1420;
+}
+
+.mazeai-job-line {
+  gap: 9px;
+  color: #8095ae;
+  font-size: 9px;
+}
+
+.mazeai-job-line strong {
+  color: var(--cyan);
+}
+
+.mazeai-job-line span:nth-child(2) {
+  flex: 1;
+}
+
+.mazeai-progress {
+  overflow: hidden;
+  height: 3px;
+  border-radius: 99px;
+  background: #16253a;
+}
+
+.mazeai-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary), var(--cyan));
+  box-shadow: 0 0 8px rgb(67 196 238 / 50%);
+  transition: width 180ms ease-out;
+}
+
+.mazeai-alert {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.mazeai-alert ul {
+  display: grid;
+  gap: 3px;
+  margin: 2px 0 0;
+  padding-left: 16px;
+}
+
+.mazeai-alert.is-error {
+  border-color: rgb(224 99 109 / 35%);
+  color: #e8959c;
+  background: rgb(93 26 36 / 18%);
+}
+
+.mazeai-alert.is-success {
+  border-color: rgb(84 201 138 / 35%);
+  color: #8edbae;
+  background: rgb(34 97 62 / 18%);
+}
+
+.mazeai-result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(270px, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+.mazeai-result-card {
+  display: grid;
+  gap: 11px;
+  min-width: 0;
+  border: 1px solid #1e2c3f;
+  border-radius: 9px;
+  padding: 11px;
+  background: linear-gradient(180deg, rgb(17 27 40 / 96%), rgb(11 18 28 / 96%));
+}
+
+.mazeai-result-card.is-proposal {
+  border-color: #29446a;
+  box-shadow: inset 0 1px 0 rgb(68 140 255 / 7%);
+}
+
+.mazeai-result-card > header {
+  display: flex;
+  gap: 9px;
+}
+
+.mazeai-card-index {
+  color: #4b92ff;
+  font: 9px "JetBrains Mono", Consolas, monospace;
+}
+
+.mazeai-result-card h3 {
+  font-size: 11px;
+}
+
+.mazeai-result-card header p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.mazeai-analysis-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.mazeai-analysis-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid rgb(34 48 68 / 54%);
+  padding: 6px 0;
+  font-size: 9px;
+}
+
+.mazeai-analysis-list dt {
+  color: var(--muted);
+}
+
+.mazeai-analysis-list dd {
+  margin: 0;
+  color: #c4d4e7;
+  text-align: right;
+}
+
+.mazeai-region-list,
+.mazeai-warning-list,
+.mazeai-log-list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mazeai-region-list li,
+.mazeai-warning-list li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 7px;
+  align-items: center;
+  border-radius: 5px;
+  padding: 6px 7px;
+  color: #9fb1c7;
+  background: #0a111b;
+  font-size: 8px;
+}
+
+.mazeai-region-list span {
+  font-family: "JetBrains Mono", Consolas, monospace;
+}
+
+.mazeai-region-list small {
+  color: var(--faint);
+}
+
+.mazeai-warning-list li {
+  grid-template-columns: 1fr;
+  border: 1px solid rgb(232 183 79 / 20%);
+  color: #d7b96f;
+  background: rgb(83 62 19 / 14%);
+}
+
+.mazeai-result-card details {
+  color: #8295ad;
+  font-size: 8px;
+}
+
+.mazeai-result-card summary {
+  cursor: pointer;
+}
+
+.mazeai-log-list {
+  margin-top: 7px;
+  color: #698099;
+  font: 8px/1.4 "JetBrains Mono", Consolas, monospace;
+}
+
+.mazeai-proposal {
+  display: grid;
+  gap: 8px;
+}
+
+.mazeai-proposal-effect {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: start;
+  border: 1px solid #233650;
+  border-radius: 6px;
+  padding: 8px;
+  background: #0a121d;
+}
+
+.mazeai-proposal-effect > span {
+  color: #4d87da;
+  font: 8px "JetBrains Mono", Consolas, monospace;
+}
+
+.mazeai-proposal-effect > div:nth-child(2) {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.mazeai-proposal-effect strong {
+  color: #d4e1f0;
+  font-size: 9px;
+}
+
+.mazeai-proposal-effect code {
+  color: #64809f;
+  font-size: 7px;
+}
+
+.mazeai-proposal-effect small {
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.35;
+}
+
+.mazeai-effect-counts {
+  display: grid;
+  gap: 3px;
+  color: #657991;
+  font-size: 7px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.mazeai-accept-button {
+  justify-self: start;
+  min-height: 31px;
+  font-size: 9px;
+}
+
+.mazeai-empty-copy {
+  margin: 0;
+  color: var(--faint);
+  font-size: 9px;
+}
+
+.mazeai-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 88px;
+  border: 1px dashed #253650;
+  border-radius: 8px;
+  color: var(--muted);
+  background: rgb(9 16 25 / 54%);
+}
+
+.mazeai-empty-state > span {
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 31px;
+  border: 1px solid #315384;
+  border-radius: 7px;
+  color: #76abf7;
+  background: rgb(35 83 148 / 16%);
+  font: 9px "JetBrains Mono", Consolas, monospace;
+}
+
+.mazeai-empty-state strong {
+  color: #bdccdd;
+  font-size: 10px;
+}
+
+.mazeai-empty-state p {
+  margin: 3px 0 0;
+  color: var(--faint);
+  font-size: 8px;
+}
+
 .overview-content table {
   width: 100%;
   border-collapse: collapse;

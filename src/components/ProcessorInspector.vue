@@ -69,6 +69,11 @@ function value(effect: ChainEffectDraft, param: ProcessorParam): ParameterValue 
   return effect.params[param.name]?.value ?? null
 }
 
+function booleanValue(effect: ChainEffectDraft, param: ProcessorParam): boolean {
+  const current = value(effect, param)
+  return current === true || String(current).toLowerCase() === 'true'
+}
+
 function regionCount(effect: ChainEffectDraft, param: ProcessorParam): number {
   return effect.params[param.name]?.regions.length || 0
 }
@@ -287,7 +292,7 @@ function updateBoolean(param: ProcessorParam, event: Event) {
             v-else-if="isBoolean(param)"
             class="toggle-control"
             type="checkbox"
-            :checked="Boolean(value(effect, param))"
+            :checked="booleanValue(effect, param)"
             @change="updateBoolean(param, $event)"
           />
 

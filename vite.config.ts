@@ -26,6 +26,12 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_MAZE_PROXY_TARGET || 'http://127.0.0.1:8081',
           changeOrigin: true,
         },
+        '/mazeai-api': {
+          target:
+            env.VITE_MAZEAI_PROXY_TARGET || 'http://127.0.0.1:8082',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/mazeai-api/, '/api'),
+        },
       },
     },
   }
